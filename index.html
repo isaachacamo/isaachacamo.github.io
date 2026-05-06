@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Isaac I. Hacamo &mdash; Associate Professor of Finance</title>
+<meta name="description" content="Isaac I. Hacamo is Associate Professor of Finance at the Indiana University Kelley School of Business. His research bridges Corporate Finance, Labor Economics, and Real Estate." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html"><span class="brand-mark">IH</span>Isaac I. Hacamo</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.querySelector('nav.primary-nav').classList.toggle('open')">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="primary-nav">
+      <a href="index.html" class="active">Home</a>
+      <a href="research.html">Research</a>
+      <a href="discussions.html">Discussions</a>
+      <a href="https://www.dropbox.com/scl/fi/bgbyxq2av0uhvu88tni2k/CV_Isaac_Hacamo_Mar2026.pdf?rlkey=rfml6ytt6gley5r9ngyjir797&dl=0" target="_blank" rel="noopener">CV</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-photo">
+        <img src="assets/isaac.jpg" alt="Portrait of Isaac I. Hacamo" />
+      </div>
+      <div class="hero-content">
+        <div class="eyebrow">Kelley School of Business &middot; Indiana University</div>
+        <h1>Isaac I.&nbsp;Hacamo</h1>
+        <div class="role">Associate Professor of Finance</div>
+        <div class="affiliation">Blanche &ldquo;Peg&rdquo; Philpott Faculty Fellow &middot; IU Center for Real Estate Studies Fellow</div>
+
+        <p class="lede">
+          My research explores the intersections of corporate finance, labor economics, and real estate &mdash; with a substantial focus on entrepreneurship. A unifying thread is understanding how economic frictions and policies shape the well-being of individuals through their financial and labor outcomes.
+        </p>
+
+        <dl class="meta-grid">
+          <div>
+            <dt>Email</dt>
+            <dd>ihacamo at iu dot edu</dd>
+          </div>
+          <div>
+            <dt>Office</dt>
+            <dd>HH 6151 &middot; Hodge Hall</dd>
+          </div>
+          <div>
+            <dt>Editorial</dt>
+            <dd><em>Management Science</em>, Associate Editor (2026&ndash;)</dd>
+          </div>
+          <div>
+            <dt>Co-organizer</dt>
+            <dd><a href="https://sites.google.com/view/iukelleychicagofedconference/home" target="_blank" rel="noopener">IU &amp; Chicago Fed Symposium</a></dd>
+          </div>
+        </dl>
+
+        <div class="cta-row">
+          <a class="btn primary" href="research.html">Research <span class="arrow">&rarr;</span></a>
+          <a class="btn" href="https://www.dropbox.com/scl/fi/bgbyxq2av0uhvu88tni2k/CV_Isaac_Hacamo_Mar2026.pdf?rlkey=rfml6ytt6gley5r9ngyjir797&dl=0" target="_blank" rel="noopener">Curriculum Vitae</a>
+          <a class="btn" href="https://scholar.google.com/citations?user=DMIl0V4AAAAJ&hl=en&oi=ao" target="_blank" rel="noopener">Google Scholar</a>
+          <a class="btn" href="https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=IHACAMO" target="_blank" rel="noopener">IU Profile</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESEARCH FIELDS -->
+  <section class="section">
+    <div class="container">
+      <div class="section-label">Research Fields</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;margin-top:32px;">
+        <div class="feature-card">
+          <h3>Corporate Finance &amp; Labor</h3>
+          <p>How rank-and-file workers, social networks, and discrimination shape firm value, hiring, and entrepreneurial entry.</p>
+          <a href="research.html#corp-finance" style="font-family:var(--sans);font-size:.86rem;font-weight:500;">View papers &rarr;</a>
+        </div>
+        <div class="feature-card">
+          <h3>Real Estate &amp; Urban Econ</h3>
+          <p>From mortgage deregulation and interest rates to rent control and tax-increment financing &mdash; how housing policy affects households and firms.</p>
+          <a href="research.html#real-estate" style="font-family:var(--sans);font-size:.86rem;font-weight:500;">View papers &rarr;</a>
+        </div>
+        <div class="feature-card">
+          <h3>Entrepreneurship</h3>
+          <p>Who becomes an entrepreneur, why, and which conditions produce the highest-quality firms &mdash; from forced entrepreneurs to households and peers.</p>
+          <a href="research.html#entrepreneurship" style="font-family:var(--sans);font-size:.86rem;font-weight:500;">View papers &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>&copy; <span id="yr"></span> Isaac I. Hacamo &middot; Indiana University, Kelley School of Business</div>
+    <div class="footer-links">
+      <a href="https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=IHACAMO" target="_blank" rel="noopener">IU Kelley</a>
+      <a href="https://scholar.google.com/citations?user=DMIl0V4AAAAJ&hl=en&oi=ao" target="_blank" rel="noopener">Scholar</a>
+      <a href="research.html">Research</a>
+      <a href="discussions.html">Discussions</a>
+    </div>
+  </div>
+</footer>
+
+<script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
