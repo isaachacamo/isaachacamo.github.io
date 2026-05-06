@@ -614,6 +614,20 @@ nav.primary-nav a.active::after {
   color: var(--ink-muted);
   margin-top: 4px;
 }
+.discussion-slides {
+  display: inline-block;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--accent);
+  margin-top: 6px;
+  letter-spacing: 0.02em;
+}
+.discussion-slides:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 @media (max-width: 640px) {
   .discussion-item {
