@@ -352,12 +352,12 @@ nav.primary-nav a.active::after {
   align-items: center;
   gap: 16px;
   font-family: var(--sans);
-  font-size: 0.78rem;
+  font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ink-soft);
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 .section-label::after {
   content: "";
@@ -703,6 +703,70 @@ nav.primary-nav a.active::after {
   font-weight: 500;
 }
 .footer-links a:hover { color: var(--accent); }
+
+/* ==========================================================================
+   CV PAGE
+   ========================================================================== */
+.cv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.cv-header h1 { margin-bottom: 0; }
+.cv-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cv-actions .btn .arrow { font-size: 0.95rem; }
+
+.cv-viewer-section {
+  padding: 40px 0 64px;
+}
+.cv-viewer {
+  position: relative;
+  width: 100%;
+  height: 88vh;
+  min-height: 600px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.cv-viewer iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.cv-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  text-align: center;
+  padding: 24px;
+  z-index: -1;
+  pointer-events: none;
+}
+.cv-fallback a {
+  margin-left: 6px;
+  color: var(--accent);
+  text-decoration: underline;
+  pointer-events: auto;
+}
+
+@media (max-width: 720px) {
+  .cv-header { flex-direction: column; align-items: flex-start; }
+  .cv-viewer { height: 70vh; min-height: 460px; }
+}
 
 /* Print */
 @media print {

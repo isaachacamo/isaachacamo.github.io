@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CV &mdash; Isaac I. Hacamo</title>
+<meta name="description" content="Curriculum Vitae of Isaac I. Hacamo, Associate Professor of Finance at Indiana University Kelley School of Business." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html"><span class="brand-mark">IH</span>Isaac I. Hacamo</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.querySelector('nav.primary-nav').classList.toggle('open')">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="primary-nav">
+      <a href="index.html">Home</a>
+      <a href="research.html">Research</a>
+      <a href="discussions.html">Discussions</a>
+      <a href="cv.html" class="active">CV</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="page-header">
+    <div class="container">
+      <div class="cv-header">
+        <div>
+          <div class="eyebrow">Curriculum Vitae</div>
+          <h1>CV</h1>
+        </div>
+        <div class="cv-actions">
+          <a class="btn primary" href="assets/cv.pdf" download>
+            Download PDF <span class="arrow">&darr;</span>
+          </a>
+          <a class="btn" href="assets/cv.pdf" target="_blank" rel="noopener">Open in new tab &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cv-viewer-section">
+    <div class="container">
+      <div class="cv-viewer">
+        <iframe
+          src="assets/cv.pdf#view=FitH&toolbar=0"
+          title="Isaac Hacamo &mdash; CV"
+          loading="lazy">
+        </iframe>
+        <div class="cv-fallback">
+          Your browser doesn&rsquo;t support inline PDF viewing.
+          <a href="assets/cv.pdf" download>Download the CV</a> to view it.
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>&copy; <span id="yr"></span> Isaac I. Hacamo &middot; Indiana University, Kelley School of Business</div>
+    <div class="footer-links">
+      <a href="https://kelley.iu.edu/faculty-research/faculty-directory/profile.html?id=IHACAMO" target="_blank" rel="noopener">IU Kelley</a>
+      <a href="https://scholar.google.com/citations?user=DMIl0V4AAAAJ&hl=en&oi=ao" target="_blank" rel="noopener">Scholar</a>
+      <a href="index.html">Home</a>
+      <a href="research.html">Research</a>
+      <a href="discussions.html">Discussions</a>
+    </div>
+  </div>
+</footer>
+
+<script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
