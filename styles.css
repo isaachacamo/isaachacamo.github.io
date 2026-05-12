@@ -532,9 +532,10 @@ nav.primary-nav a.active::after {
   font-family: var(--sans);
   font-size: 0.82rem;
   font-weight: 500;
-  color: #1a1a1a;
+  color: #3a4754;
   background: #f5efe2;
-  padding: 2px 12px;
+  border: 1px solid #a89878;
+  padding: 1px 11px;
   border-radius: 8px;
   letter-spacing: 0.005em;
   margin-right: 4px;
