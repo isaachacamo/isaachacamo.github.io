@@ -477,15 +477,19 @@ nav.primary-nav a.active::after {
 }
 
 .paper {
-  border-top: 1px solid var(--rule-soft);
-  padding: 14px 16px;
-  margin: 0 -16px;
-  border-radius: 4px;
-  transition: background-color .2s ease;
+  border: 1px solid var(--rule);
+  padding: 18px 22px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  background: #fafaf7;
+  transition: background-color .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
 .paper:hover,
-.paper:has(details[open]) { background-color: #fafaf7; }
-.paper:first-of-type { border-top: 1px solid var(--rule); }
+.paper:has(details[open]) {
+  background-color: #f4f1e8;
+  border-color: #c8c4b6;
+  box-shadow: 0 2px 8px rgba(20, 20, 20, 0.05);
+}
 
 .paper details > summary {
   list-style: none;
@@ -528,16 +532,12 @@ nav.primary-nav a.active::after {
   margin-top: 4px;
 }
 .paper-venue .journal {
-  display: inline-block;
   font-family: var(--sans);
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #3a4754;
-  background: #f5efe2;
-  border: 1px solid #a89878;
-  padding: 1px 11px;
-  border-radius: 8px;
-  letter-spacing: 0.005em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #7a1f1f;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   margin-right: 4px;
 }
 .paper-venue .badge {
