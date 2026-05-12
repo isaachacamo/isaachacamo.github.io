@@ -206,7 +206,7 @@ nav.primary-nav a.active::after {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: #7a1f1f;
   margin-bottom: 14px;
 }
 .hero h1 {
@@ -253,7 +253,7 @@ nav.primary-nav a.active::after {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: #7a1f1f;
 }
 .highlight-body {
   font-size: 0.98rem;
