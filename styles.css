@@ -481,12 +481,12 @@ nav.primary-nav a.active::after {
   padding: 18px 22px;
   margin-bottom: 14px;
   border-radius: 8px;
-  background: #fafaf7;
+  background: #fcfcfa;
   transition: background-color .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
 .paper:hover,
 .paper:has(details[open]) {
-  background-color: #f4f1e8;
+  background-color: #f6f3eb;
   border-color: #c8c4b6;
   box-shadow: 0 2px 8px rgba(20, 20, 20, 0.05);
 }
