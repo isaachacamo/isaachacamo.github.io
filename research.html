@@ -154,8 +154,8 @@
             <div class="paper-abstract">
               <p>Using a large-scale field experiment, we test whether high-skill employees discriminate against female-led businesses. We build 18 high-growth startups in identical pairs differing only by founder gender. Founders email prospective employees regarding an open role and request a meeting. Male founders secure a 10% acceptance rate, while female founders receive 30&ndash;50% lower rates. This response gap is larger for individuals with better outside options. We prime respondents with information about female-targeted funding initiatives to shift beliefs about female founders&rsquo; success rates. This intervention reduces the response gap by 90%. Additional evidence suggests that employees internalize the discrimination experienced by employers.</p>
             </div>
-            <a class="paper-figure" href="thumbnails/employees_discriminating.png">
-              <img src="thumbnails/employees_discriminating.png" alt="Table 6: Effect of Priming" />
+            <a class="paper-figure" href="assets/figures/employees_discriminating.png">
+              <img src="assets/figures/employees_discriminating.png" alt="Meeting acceptance rate by founder gender, before and after priming" />
               <span class="paper-figure-caption">Table 6 — Effect of Priming</span>
             </a>
           </div>
@@ -426,18 +426,22 @@
   </div>
 </footer>
 
-<div id="lightbox" class="lightbox" role="dialog" aria-hidden="true">
-  <button class="lightbox-close" aria-label="Close">&times;</button>
-  <img id="lightbox-img" src="" alt="" />
+<div id="figure-lightbox" class="figure-lightbox" role="dialog" aria-hidden="true">
+  <div class="figure-lightbox-inner">
+    <button class="figure-lightbox-close" aria-label="Close">&times;</button>
+    <img src="" alt="" />
+  </div>
 </div>
 
 <script>
   document.getElementById('yr').textContent = new Date().getFullYear();
 
+  // Click-to-zoom: clicking a thumbnail opens it centered in a lightly dimmed
+  // overlay, with a close button. Click outside, the close button, or Esc to close.
   (function () {
-    var lb = document.getElementById('lightbox');
-    var lbImg = document.getElementById('lightbox-img');
-    var lbClose = lb.querySelector('.lightbox-close');
+    var lb = document.getElementById('figure-lightbox');
+    var lbImg = lb.querySelector('img');
+    var lbClose = lb.querySelector('.figure-lightbox-close');
 
     function open(src, alt) {
       lbImg.src = src;
@@ -450,7 +454,7 @@
       lb.classList.remove('open');
       lb.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
-      setTimeout(function(){ lbImg.src = ''; }, 250);
+      setTimeout(function () { lbImg.src = ''; }, 220);
     }
 
     document.querySelectorAll('a.paper-figure').forEach(function (a) {
@@ -462,8 +466,7 @@
     });
 
     lb.addEventListener('click', function (e) {
-      // close when clicking the dim background, NOT the image itself
-      if (e.target === lb) close();
+      if (e.target === lb) close();   // click on the dim backdrop, not the image
     });
     lbClose.addEventListener('click', close);
     document.addEventListener('keydown', function (e) {
