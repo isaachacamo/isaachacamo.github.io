@@ -56,6 +56,70 @@ body.editing [contenteditable="true"]:hover{background:rgba(201,162,39,.08)}
 .bar .grow{flex:1}
 #deckName{color:#888;max-width:22ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* slides roll: out through the top, in from below (reversed going back) */
+.slide.leaveUp,.slide.leaveDown,.slide.enterUp,.slide.enterDown{display:block}
+.slide.leaveUp{animation:rollOutUp .48s cubic-bezier(.4,0,.2,1) forwards;z-index:1}
+.slide.enterUp{animation:rollInUp .48s cubic-bezier(.4,0,.2,1);z-index:2}
+.slide.leaveDown{animation:rollOutDown .48s cubic-bezier(.4,0,.2,1) forwards;z-index:1}
+.slide.enterDown{animation:rollInDown .48s cubic-bezier(.4,0,.2,1);z-index:2}
+@keyframes rollOutUp{to{transform:translateY(-100%)}}
+@keyframes rollInUp{from{transform:translateY(100%)}}
+@keyframes rollOutDown{to{transform:translateY(100%)}}
+@keyframes rollInDown{from{transform:translateY(-100%)}}
+@media (prefers-reduced-motion:reduce){
+  .slide.leaveUp,.slide.enterUp,.slide.leaveDown,.slide.enterDown{animation:none}
+}
+
+/* an ID rule with display: beats the UA's [hidden] rule, so say it explicitly */
+#answer[hidden],#noteBadge[hidden]{display:none!important}
+
+/* note marker, parked in whichever corner of the slide is free */
+#noteBadge{position:absolute;z-index:4;display:flex;align-items:center;gap:.4em;
+  background:#fdf6e0;border:1.5px solid #dcc586;color:#6f5210;border-radius:999px;
+  padding:.34em .8em;font-size:clamp(12px,1.75cqw,24px);line-height:1;cursor:pointer;
+  box-shadow:0 2px 7px rgba(0,0,0,.16);font-family:system-ui,sans-serif;
+  transition:background .15s,transform .15s}
+#noteBadge:hover{background:#f7e9c4;transform:scale(1.06)}
+#noteBadge .ico{font-size:1.1em}
+#noteBadge .n{font-weight:700}
+#noteBadge.pop{animation:badgePop .4s cubic-bezier(.3,1.4,.5,1)}
+@keyframes badgePop{0%{transform:scale(.7)}55%{transform:scale(1.3)}100%{transform:scale(1)}}
+
+/* 2. a note flies from where you typed it to the marker */
+.note-fly{position:fixed;z-index:70;pointer-events:none;background:#fdf6e0;
+  border:1.5px solid #dcc586;color:#6f5210;border-radius:10px;padding:7px 11px;
+  font:13px/1.35 system-ui,sans-serif;max-width:280px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;box-shadow:0 8px 22px rgba(0,0,0,.2)}
+
+/* talk timer */
+#timer{font-variant-numeric:tabular-nums;font-size:13px;padding:3px 9px;border-radius:6px;
+  border:1px solid var(--line);background:#fff;color:#444;cursor:pointer;user-select:none}
+#timer:hover{background:#fafafa}
+#timer.running{border-color:#bcd3bc;background:#f2f8f2;color:#1d5c2a}
+#timer.warn{border-color:#e3c98a;background:#fdf6e6;color:#8a6412}
+#timer.over{border-color:#e0a9a9;background:#fdeeee;color:#a4262c;font-weight:600}
+
+/* answer card, used when the pane is hidden */
+#answer{position:fixed;right:20px;bottom:20px;width:min(420px,44vw);z-index:45;
+  background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  box-shadow:0 18px 50px rgba(0,0,0,.28);display:flex;flex-direction:column;
+  opacity:0;transform:translateY(10px);transition:opacity .18s,transform .18s}
+#answer.open{opacity:1;transform:none}
+.ans-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
+  border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase;
+  letter-spacing:.05em;color:#666;background:#fafaf8}
+.ans-head button{border:0;background:none;font-size:18px;line-height:1;cursor:pointer;color:#888}
+.ans-head button:hover{color:#222}
+#ansBody{padding:11px 13px;font-size:13.5px;line-height:1.5;max-height:38vh;overflow:auto}
+.ans-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--line)}
+.ans-foot input{flex:1;border:1px solid #cfcfca;border-radius:6px;padding:7px 9px;font:inherit;font-size:13px}
+.ans-foot button{border:0;background:var(--navy);color:#fff;border-radius:6px;padding:0 12px;cursor:pointer}
+
+/* follow-up affordance under an answer in the pane */
+.followup{margin-top:6px;border:1px solid var(--line);background:#fff;color:var(--navy);
+  border-radius:6px;padding:2px 8px;font:inherit;font-size:11.5px;cursor:pointer}
+.followup:hover{background:#f4f6ff}
+
 /* side pane */
 #pane{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;
   min-height:0;overflow:hidden}
@@ -93,11 +157,11 @@ body.editing [contenteditable="true"]:hover{background:rgba(201,162,39,.08)}
 .pal-hint{padding:8px 18px;font-size:11.5px;color:#999;border-top:1px solid var(--line);background:#fafaf8}
 
 /* figure lightbox */
-#lightbox{position:fixed;inset:0;background:rgba(8,8,16,.86);display:none;align-items:center;
+#lightbox{position:fixed;inset:0;background:rgba(8,8,16,.78);display:none;align-items:center;
   justify-content:center;z-index:40;padding:2vh 2vw}
 #lightbox.open{display:flex}
-.lb-box{background:#fff;border-radius:10px;padding:14px 16px 10px;width:min(96vw,1800px);
-  height:96vh;display:flex;flex-direction:column;gap:8px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+.lb-box{background:#fff;border-radius:10px;padding:14px 16px 10px;width:min(84vw,1250px);
+  height:82vh;display:flex;flex-direction:column;gap:8px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
 .lb-fig{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:auto}
 #lbImg{max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:zoom-in}
 #lightbox.zoom .lb-fig{align-items:flex-start;justify-content:flex-start}

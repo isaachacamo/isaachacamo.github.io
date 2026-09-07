@@ -97,7 +97,8 @@ let cur = 0, history = [], editMode = false, paneHidden = false, store = null;
 function mountDeck(deck) {
   D = deck;
   const stage = $("#deck");
-  const askbtn = $("#askbtn");          // keep it: innerHTML="" would drop it
+  const askbtn = $("#askbtn");          // keep these: innerHTML="" would drop them
+  const badge = $("#noteBadge");
   stage.innerHTML = "";
   $("#deckStyles").textContent = deck.styles || "";
   document.documentElement.style.setProperty("--slide-w", deck.size[0]);
@@ -113,6 +114,7 @@ function mountDeck(deck) {
     s.node = el;
   });
   if (askbtn) stage.appendChild(askbtn);
+  if (badge) stage.appendChild(badge);
 
   // deck-authored scripts, opted in with data-deck-script
   deck.scripts.forEach(code => {
@@ -127,6 +129,8 @@ function mountDeck(deck) {
   };
   markEditable();
   restoreEdits();
+  Timer.load();
+  chat = [];
   paneHidden = !!store.data.paneHidden;
   document.body.classList.toggle("pane-hidden", paneHidden);
   document.body.classList.remove("no-deck");
@@ -185,16 +189,91 @@ function setEdit(on, quiet) {
 }
 const save = () => LS.set(store.key, store.data);
 
+/* ------------------------------------------------------------------ timer
+ * Set it once at the start of the talk; it counts down and keeps going
+ * (in red, with a +) once you are over. Survives a reload mid-talk.        */
+const Timer = (() => {
+  const DEFAULT = 90 * 60;                       // 1.5 hours
+  let total = DEFAULT, left = DEFAULT, running = false, since = 0, tick = null;
+
+  const fmt = s => {
+    const over = s < 0; s = Math.abs(Math.round(s));
+    const h = (s / 3600) | 0, m = ((s % 3600) / 60) | 0, ss = s % 60;
+    const mm = h ? String(m).padStart(2, "0") : String(m);
+    return (over ? "+" : "") + (h ? h + ":" : "") + mm + ":" + String(ss).padStart(2, "0");
+  };
+  const remaining = () => running ? left - (Date.now() - since) / 1000 : left;
+
+  function render() {
+    const el = $("#timer"); if (!el) return;
+    const r = remaining();
+    el.textContent = fmt(r);
+    el.classList.toggle("running", running);
+    el.classList.toggle("warn", r <= 300 && r > 0);
+    el.classList.toggle("over", r <= 0);
+    el.title = running ? "Running — click to pause" : "Paused — click to start";
+  }
+  function persist() {
+    if (!store) return;
+    store.data.timer = { total, left, running, since }; save();
+  }
+  function loop() { clearInterval(tick); if (running) tick = setInterval(render, 250); render(); }
+
+  return {
+    load() {
+      const t = (store && store.data.timer) || null;
+      if (t) ({ total, left, running, since } = t); else { total = left = DEFAULT; running = false; }
+      loop();
+    },
+    set(minutes, andStart = true) {
+      total = left = Math.max(1, Math.round(minutes * 60));
+      running = false; since = 0;
+      if (andStart) this.start(); else { persist(); loop(); }
+      toast(`Timer set to ${minutes} min` + (andStart ? " and started" : ""));
+    },
+    start() { if (!running) { running = true; since = Date.now(); persist(); loop(); } },
+    pause() { if (running) { left = remaining(); running = false; persist(); loop(); } },
+    toggle() { running ? this.pause() : this.start(); },
+    reset() { left = total; running = false; since = 0; persist(); loop(); toast("Timer reset"); },
+    render, remaining,
+  };
+})();
+
 /* ------------------------------------------------------------------ navigation */
 function applySteps(node) {
   const st = +node.dataset.step;
   node.querySelectorAll("[data-in]").forEach(el => el.classList.toggle("on", +el.dataset.in <= st));
 }
-function show(i, { push = true, step = 0 } = {}) {
+let rollT = null;
+const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* Slides roll: the outgoing one travels up and out, the new one comes up
+   from below (reversed when you go backwards).                            */
+function roll(fromIdx, toIdx, dir) {
+  const to = D.slides[toIdx].node;
+  const from = fromIdx === toIdx ? null : D.slides[fromIdx].node;
+  clearTimeout(rollT);
+  D.slides.forEach(s => s.node.classList.remove("leaveUp", "leaveDown", "enterUp", "enterDown"));
+  if (!from || !dir || reduceMotion()) {
+    D.slides.forEach((s, k) => s.node.classList.toggle("active", k === toIdx));
+    return;
+  }
+  const up = dir > 0;
+  from.classList.add(up ? "leaveUp" : "leaveDown");
+  to.classList.add("active", up ? "enterUp" : "enterDown");
+  rollT = setTimeout(() => {
+    D.slides.forEach((s, k) => s.node.classList.toggle("active", k === toIdx));
+    from.classList.remove("leaveUp", "leaveDown");
+    to.classList.remove("enterUp", "enterDown");
+  }, 360);
+}
+
+function show(i, { push = true, step = 0, dir } = {}) {
   if (!D) return;
+  const fromIdx = cur;
   if (push && i !== cur) history.push(cur);
   cur = (i + D.slides.length) % D.slides.length;
-  D.slides.forEach((s, k) => s.node.classList.toggle("active", k === cur));
+  roll(fromIdx, cur, dir !== undefined ? dir : Math.sign(cur - fromIdx));
   const n = D.slides[cur].node;
   n.dataset.step = step === "last" ? n.dataset.frags : 0;
   applySteps(n);
@@ -204,12 +283,12 @@ function show(i, { push = true, step = 0 } = {}) {
 function next() {
   const n = D.slides[cur].node, st = +n.dataset.step, max = +n.dataset.frags;
   if (st < max) { n.dataset.step = st + 1; applySteps(n); }
-  else if (cur < D.slides.length - 1) show(cur + 1, { push: false });
+  else if (cur < D.slides.length - 1) show(cur + 1, { push: false, dir: 1 });
 }
 function prev() {
   const n = D.slides[cur].node, st = +n.dataset.step;
   if (st > 0) { n.dataset.step = st - 1; applySteps(n); }
-  else if (cur > 0) show(cur - 1, { push: false, step: "last" });
+  else if (cur > 0) show(cur - 1, { push: false, step: "last", dir: -1 });
 }
 function back() {
   if (history.length) show(history.pop(), { push: false });
@@ -245,6 +324,7 @@ function renderPane() {
   log.innerHTML = "";
   notesOf(cur).forEach(n => addMsg(n.kind, n.html || esc(n.text), false));
   log.scrollTop = log.scrollHeight;
+  renderNoteBadge();
 }
 function addMsg(kind, html, persist = true) {
   const log = $("#log");
@@ -253,9 +333,49 @@ function addMsg(kind, html, persist = true) {
   const label = { prep: "Prepared", live: "Note", q: "You → Claude", ai: "Claude", data: "Data" }[kind] || kind;
   d.innerHTML = `<div class="tag-l">${label}</div>${html}`;
   log.appendChild(d); log.scrollTop = log.scrollHeight;
-  if (persist) { (store.data.notes[cur] = store.data.notes[cur] || []).push({ kind, html }); save(); }
+  if (persist) {
+    (store.data.notes[cur] = store.data.notes[cur] || []).push({ kind, html });
+    save(); renderNoteBadge();
+  }
   return d;
 }
+/* A small marker on the slide itself when it carries notes, parked in
+   whichever corner is free of content.                                   */
+function renderNoteBadge() {
+  const badge = $("#noteBadge"); if (!badge || !D) return;
+  const n = ((store.data.notes || {})[cur] || []).length;
+  badge.hidden = !n;
+  if (!n) return;
+  badge.innerHTML = `<span class="ico">✎</span><span class="n">${n}</span>`;
+  badge.title = `${n} note${n > 1 ? "s" : ""} on this slide — click to open the pane`;
+  placeBadge(badge);
+}
+function placeBadge(badge) {
+  const slide = D.slides[cur].node;
+  const r = slide.getBoundingClientRect();
+  if (!r.width) return;
+  const pad = r.width * 0.012, w = r.width * 0.075, h = r.height * 0.075;
+  // only leaf elements: containers span the whole slide and would look "occupied"
+  const boxes = [...slide.querySelectorAll("*")]
+    .filter(el => el !== badge && !el.contains(badge)
+                  && (!el.firstElementChild || /^(IMG|SVG|CANVAS)$/.test(el.tagName))
+                  && el.offsetParent !== null)
+    .map(el => el.getBoundingClientRect())
+    .filter(b => b.width > 2 && b.height > 2)
+    .map(b => ({ x: b.left - r.left, y: b.top - r.top, w: b.width, h: b.height }));
+  const spots = [
+    ["br", r.width - w - pad, r.height - h - pad],
+    ["bl", pad, r.height - h - pad],
+    ["tr", r.width - w - pad, pad],
+    ["bc", (r.width - w) / 2, r.height - h - pad],
+  ];
+  const free = spots.find(([, x, y]) =>
+    !boxes.some(b => x < b.x + b.w && x + w > b.x && y < b.y + b.h && y + h > b.y));
+  const [, x, y] = free || spots[0];
+  badge.style.left = (x / r.width * 100) + "%";
+  badge.style.top = (y / r.height * 100) + "%";
+}
+
 function togglePane(force) {
   paneHidden = force === undefined ? !paneHidden : force;
   document.body.classList.toggle("pane-hidden", paneHidden);
@@ -294,7 +414,7 @@ async function callApi(path, payload, onText) {
   if (!API()) {
     onText('<i>[No backend configured. Add <code>"api": "http://localhost:8787"</code> to the '
       + "deck's <code>deck-meta</code> and this answer will come from the server.]</i>");
-    return;
+    return "";
   }
   try {
     const r = await fetch(API().replace(/\/$/, "") + path, {
@@ -303,14 +423,18 @@ async function callApi(path, payload, onText) {
                  ...(window.PREZ_TOKEN ? { Authorization: "Bearer " + window.PREZ_TOKEN } : {}) },
       body: JSON.stringify(payload),
     });
-    if (!r.ok) { onText(`<i>[Server said ${r.status}. ${esc(await r.text().catch(() => ""))}]</i>`); return; }
+    if (!r.ok) { onText(`<i>[Server said ${r.status}. ${esc(await r.text().catch(() => ""))}]</i>`); return ""; }
     const ct = r.headers.get("content-type") || "";
     if (ct.includes("text/plain") || ct.includes("event-stream")) {
       const rd = r.body.getReader(), dec = new TextDecoder(); let acc = "";
       for (;;) { const { value, done } = await rd.read(); if (done) break;
         acc += dec.decode(value, { stream: true }); onText(esc(acc).replace(/\n/g, "<br>")); }
-    } else { onText(renderResult(await r.json())); }
-  } catch (e) { onText("<i>[Could not reach the server: " + esc(e.message) + "]</i>"); }
+      return acc;
+    }
+    const j = await r.json();
+    onText(renderResult(j));
+    return j.text || stripTags(renderResult(j));
+  } catch (e) { onText("<i>[Could not reach the server: " + esc(e.message) + "]</i>"); return ""; }
 }
 function renderResult(j) {
   if (j.html) return j.html;
@@ -320,6 +444,52 @@ function renderResult(j) {
     + `<div class="dim">${esc(j.quote.asOf || "")}</div>`;
   return "<pre>" + esc(JSON.stringify(j, null, 1)) + "</pre>";
 }
+/* Where an answer goes: the pane when it is open, a floating card when it
+   is hidden. Either way you can follow up without losing the thread.     */
+let chat = [];              // running conversation with Claude
+let lastMode = "ask";
+
+function answerCard(kind) {
+  const box = $("#answer"), body = $("#ansBody");
+  $("#ansLabel").textContent = kind === "data" ? "Data" : "Claude";
+  body.innerHTML = "…";
+  box.hidden = false;
+  box.classList.add("open");
+  return html => { body.innerHTML = html; body.scrollTop = body.scrollHeight; };
+}
+const closeAnswer = () => { const b = $("#answer"); b.classList.remove("open"); b.hidden = true; };
+
+function sink(kind) {
+  const toPane = streaming(kind);
+  if (!paneHidden) return toPane;
+  const toCard = answerCard(kind);
+  return html => { toPane(html); toCard(html); };     // pane keeps the record either way
+}
+
+async function askClaude(mode, question) {
+  const q = (question || "").trim();
+  if (!q) return;
+  lastMode = mode;
+  addMsg("q", esc(q));
+  const history = chat.slice(-8);
+  chat.push({ role: "user", content: q });
+  const answer = await callApi(mode === "ask" ? "/ask" : "/claude",
+    { question: q, context: slideContext(), history, scope: mode === "ask" ? "deck" : undefined },
+    sink("ai"));
+  chat.push({ role: "assistant", content: answer || "" });
+  offerFollowUp();
+}
+function offerFollowUp() {
+  const last = [...$("#log").querySelectorAll(".msg.ai")].pop();
+  if (last && !last.querySelector(".followup")) {
+    const b = document.createElement("button");
+    b.className = "followup"; b.textContent = "Follow up ↩";
+    b.onclick = () => paneHidden ? $("#ansInput").focus() : (openPalette("/" + lastMode + " "));
+    last.appendChild(b);
+  }
+  if (!$("#answer").hidden) $("#ansInput").focus();
+}
+
 function streaming(kind) {
   const d = addMsg(kind, '<div class="bd">…</div>', false);
   const body = d.querySelector(".bd");
@@ -364,26 +534,26 @@ const COMMANDS = [
       const t = a.replace(/^#/, "").trim(); if (!t) return;
       (store.data.tags[cur] = store.data.tags[cur] || []).push(t); save(); renderPane(); toast("Tagged #" + t);
     } },
-  { name: "ask", args: "<question>", help: "Claude, answering only from this deck", run: a => {
-      addMsg("q", esc(a)); callApi("/ask", { question: a, context: slideContext(), scope: "deck" }, streaming("ai"));
-    } },
-  { name: "claude", args: "<question>", help: "Claude, unrestricted", run: a => {
-      addMsg("q", esc(a)); callApi("/claude", { question: a, context: slideContext() }, streaming("ai"));
-    } },
+  { name: "ask", args: "<question>", help: "Claude, answering only from this deck",
+    run: a => askClaude("ask", a) },
+  { name: "claude", args: "<question>", help: "Claude, unrestricted",
+    run: a => askClaude("claude", a) },
+  { name: "forget", args: "", help: "Start a fresh conversation with Claude",
+    run: () => { chat = []; toast("New thread — earlier answers forgotten"); } },
   { name: "price", args: "<TICKER>", help: "Latest stock quote", run: a => {
-      addMsg("q", "/price " + esc(a)); callApi("/data/price", { symbol: a.trim().toUpperCase() }, streaming("data"));
+      addMsg("q", "/price " + esc(a)); callApi("/data/price", { symbol: a.trim().toUpperCase() }, sink("data"));
     } },
   { name: "yield", args: "<10y | 2y | …>", help: "Treasury yield (FRED)", run: a => {
-      addMsg("q", "/yield " + esc(a)); callApi("/data/yield", { tenor: a.trim() || "10y" }, streaming("data"));
+      addMsg("q", "/yield " + esc(a)); callApi("/data/yield", { tenor: a.trim() || "10y" }, sink("data"));
     } },
   { name: "series", args: "<FRED id>", help: "Any FRED series, latest value", run: a => {
-      addMsg("q", "/series " + esc(a)); callApi("/data/series", { id: a.trim().toUpperCase() }, streaming("data"));
+      addMsg("q", "/series " + esc(a)); callApi("/data/series", { id: a.trim().toUpperCase() }, sink("data"));
     } },
   { name: "fx", args: "<USDCAD>", help: "Exchange rate", run: a => {
-      addMsg("q", "/fx " + esc(a)); callApi("/data/fx", { pair: a.trim().toUpperCase() }, streaming("data"));
+      addMsg("q", "/fx " + esc(a)); callApi("/data/fx", { pair: a.trim().toUpperCase() }, sink("data"));
     } },
   { name: "news", args: "<topic>", help: "News snippet", run: a => {
-      addMsg("q", "/news " + esc(a)); callApi("/data/news", { topic: a.trim() }, streaming("data"));
+      addMsg("q", "/news " + esc(a)); callApi("/data/news", { topic: a.trim() }, sink("data"));
     } },
   { name: "edit", args: "[on | off]", help: "Slide editing (off by default)", run: a => {
       const t = a.trim().toLowerCase(); setEdit(t === "on" ? true : t === "off" ? false : !editMode);
@@ -395,6 +565,16 @@ const COMMANDS = [
         if (store.data.edits[el.dataset.edit] !== undefined) { delete store.data.edits[el.dataset.edit]; n++; }
       });
       save(); n ? location.reload() : toast("No edits on this slide");
+    } },
+  { name: "timer", args: "[minutes | start | pause | reset]", help: "Talk timer (default 90 min)",
+    run: a => {
+      const t = a.trim().toLowerCase();
+      if (!t) return Timer.toggle();
+      if (t === "start") return Timer.start();
+      if (t === "pause" || t === "stop") return Timer.pause();
+      if (t === "reset") return Timer.reset();
+      const m = parseFloat(t);
+      if (isFinite(m) && m > 0) Timer.set(m); else toast("Try /timer 45");
     } },
   { name: "pane", args: "", help: "Show / hide the side pane", run: () => togglePane() },
   { name: "open", args: "", help: "Open a different deck", run: () => $("#file").click() },
@@ -498,6 +678,20 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#openPal").onclick = () => openPalette("");
   $("#hidePane").onclick = () => togglePane();
   $("#editBtn").onclick = () => setEdit(!editMode);
+  $("#timer").onclick = () => Timer.toggle();
+  $("#noteBadge").onclick = () => { if (paneHidden) togglePane(false); };
+  $("#ansClose").onclick = closeAnswer;
+  const ansIn = $("#ansInput");
+  const sendFollowUp = () => {
+    const v = ansIn.value.trim(); if (!v) return;
+    ansIn.value = ""; askClaude(lastMode, v);
+  };
+  ansIn.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); sendFollowUp(); }
+    if (e.key === "Escape") { e.preventDefault(); closeAnswer(); }
+    e.stopPropagation();
+  });
+  $("#ansSend").onclick = sendFollowUp;
   $("#openBtn").onclick = () => $("#file").click();
   $("#file").onchange = e => e.target.files[0] && loadFile(e.target.files[0]);
   $(".lb-prev").onclick = e => { e.stopPropagation(); stepFigure(-1); };
@@ -571,6 +765,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape") {
       if ($("#lightbox").classList.contains("open")) return closeLightbox();
       if ($("#palette").classList.contains("open")) return closePalette();
+      if (!$("#answer").hidden) return closeAnswer();
       if (typing) ae.blur();
       return;
     }
@@ -587,6 +782,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (k === "e") return setEdit(!editMode);
     if (k === "b") return back();
     if (k === "f") return toggleFull();
+    if (k === "t") return Timer.toggle();
     if (k === "o") return $("#file").click();
     if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); next(); }
     if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); prev(); }
@@ -594,6 +790,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "End") show(D.slides.length - 1);
   });
 
+  window.addEventListener("resize", () => { if (D) renderNoteBadge(); });
   boot();
 });
 
@@ -608,5 +805,6 @@ function toast(msg) {
 }
 
 window.PREZ = { show: i => show(i), next, prev, back, openPalette, closePalette, runCommand,
-                openFigure, togglePane, setEdit, loadFile, get deck() { return D; } };
+                openFigure, togglePane, setEdit, loadFile, Timer, askClaude,
+                get deck() { return D; }, get chat() { return chat; } };
 })();

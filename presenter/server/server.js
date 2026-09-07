@@ -70,14 +70,31 @@ this is being read aloud to a room.`;
 const OPEN = `You are helping a professor during a live lecture. Be brief and concrete -
 two or three sentences unless more is asked for. If a claim is uncertain, say so.`;
 
-async function stream(res, { model, system, prompt, maxTokens = 700, email }) {
+/* Follow-ups: the client sends the thread so far. Keep only well-formed
+   user/assistant turns, starting with a user one and strictly alternating. */
+function sanitizeHistory(h) {
+  if (!Array.isArray(h)) return [];
+  const out = [];
+  for (const m of h.slice(-10)) {
+    if (!m || (m.role !== "user" && m.role !== "assistant")) continue;
+    const content = String(m.content || "").slice(0, 6000).trim();
+    if (!content) continue;
+    if (!out.length && m.role !== "user") continue;
+    if (out.length && out[out.length - 1].role === m.role) { out[out.length - 1].content = content; continue; }
+    out.push({ role: m.role, content });
+  }
+  if (out.length && out[out.length - 1].role === "user") out.pop();   // the new question follows
+  return out;
+}
+
+async function stream(res, { model, system, prompt, maxTokens = 700, email, history = [] }) {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   let used = 0;
   try {
     const s = await anthropic.messages.stream({
       model, max_tokens: maxTokens, system,
-      messages: [{ role: "user", content: prompt }],
+      messages: [...history, { role: "user", content: prompt }],
     });
     for await (const ev of s) {
       if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
@@ -111,6 +128,7 @@ app.post("/ask", auth, async (req, res) => {
   const corpus = retrieve(question, context);
   await stream(res, {
     model: MODEL_FAST, system: GROUNDED, email: req.user.email,
+    history: sanitizeHistory(req.body.history),
     prompt: `LECTURE MATERIAL\n${contextBlock({ ...context, corpus })}\n\nQUESTION\n${question}`,
   });
 });
@@ -120,6 +138,7 @@ app.post("/claude", auth, async (req, res) => {
   if (!budget(req.user.email, 0)) return res.status(429).send("Daily budget reached.");
   await stream(res, {
     model: MODEL_DEEP, system: OPEN, email: req.user.email, maxTokens: 1200,
+    history: sanitizeHistory(req.body.history),
     prompt: `${contextBlock(context)}\n\nQUESTION\n${question}`,
   });
 });

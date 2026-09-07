@@ -36,6 +36,7 @@
 
     <div class="deck" id="deck">
       <div class="askbtn" id="askbtn">Ask Claude about this &#8599;</div>
+      <div id="noteBadge" hidden></div>
     </div>
 
     <div class="bar">
@@ -44,12 +45,14 @@
       <button id="next" title="Next (→)">&#8594;</button>
       <button id="openPal" title="Command palette (⌘K or /)">&#8984;K command</button>
       <button id="editBtn" title="Toggle editing (E)">Editing: off</button>
+      <span id="timer" title="Click to start">1:30:00</span>
       <span class="grow"></span>
       <span id="deckName"></span>
       <span><span class="kbd">/</span> command
         <span class="kbd">E</span> edit
         <span class="kbd">H</span> pane
         <span class="kbd">B</span> back
+        <span class="kbd">T</span> timer
         <span class="kbd">F</span> full</span>
       <button id="hidePane" title="Show / hide the pane (H)">Hide pane</button>
     </div>
@@ -83,6 +86,18 @@
   <div class="lb-box">
     <div class="lb-fig"><img id="lbImg" alt=""></div>
     <div id="lbCap"></div>
+  </div>
+</div>
+
+<div id="answer" hidden>
+  <div class="ans-head">
+    <span id="ansLabel">Claude</span>
+    <button id="ansClose" title="Close (Esc)">&times;</button>
+  </div>
+  <div id="ansBody"></div>
+  <div class="ans-foot">
+    <input id="ansInput" placeholder="Follow up&hellip;" autocomplete="off">
+    <button id="ansSend" title="Send">&#8629;</button>
   </div>
 </div>
 
