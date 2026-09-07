@@ -1,0 +1,612 @@
+/* Presenter — a player for HTML decks. See DECK-SPEC.md for the deck contract.
+ *
+ * Loads a deck from: a bundled <template id="deck">, ?deck=<url> when served
+ * over http, a dropped/picked file, or the last deck it cached in IndexedDB.
+ */
+(function () {
+"use strict";
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const stripTags = s => { const d = document.createElement("div"); d.innerHTML = s; return d.textContent.trim(); };
+
+/* ------------------------------------------------------------------ storage */
+const DB = (() => {
+  let p;
+  const open = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open("presenter", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("decks");
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (mode, fn) => {
+    try {
+      const db = await open();
+      return await new Promise((res, rej) => {
+        const t = db.transaction("decks", mode), s = t.objectStore("decks");
+        const q = fn(s); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error);
+      });
+    } catch (e) { return null; }
+  };
+  return { get: k => tx("readonly", s => s.get(k)), set: (k, v) => tx("readwrite", s => s.put(v, k)) };
+})();
+
+const LS = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+
+/* ------------------------------------------------------------------ parsing */
+function parseDeck(htmlText, name) {
+  const doc = new DOMParser().parseFromString(htmlText, "text/html");
+  const sections = [...doc.querySelectorAll("section.slide")];
+  if (!sections.length) throw new Error("No <section class=\"slide\"> found in " + (name || "that file"));
+
+  let meta = {};
+  const metaEl = doc.querySelector('script[type="application/json"]#deck-meta, script[type="application/json"].deck-meta');
+  if (metaEl) { try { meta = JSON.parse(metaEl.textContent); } catch (e) { console.warn("deck-meta is not valid JSON:", e); } }
+
+  const styles = [...doc.querySelectorAll("style")].map(s => s.textContent).join("\n");
+  const scripts = [...doc.querySelectorAll("script[data-deck-script]")].map(s => s.textContent);
+
+  const slides = sections.map((sec, i) => {
+    const titleEl = sec.querySelector(".ftitle, h1, h2");
+    const title = (sec.dataset.title || (titleEl ? titleEl.textContent : "") || "").trim();
+    let steps = sec.dataset.steps !== undefined ? +sec.dataset.steps : 0;
+    if (sec.dataset.steps === undefined) {
+      for (const el of sec.querySelectorAll("[class],[data-in]")) {
+        const m = /(?:^|\s)f([1-9])(?:\s|$)/.exec(el.className || "");
+        if (m) steps = Math.max(steps, +m[1]);
+        if (el.dataset.in) steps = Math.max(steps, +el.dataset.in);
+      }
+    }
+    const tags = (sec.dataset.tags || "").split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean);
+    if (sec.id) tags.push(sec.id);
+    if (!tags.length) tags.push(...autoTags(title));
+    const notes = (sec.dataset.notes || "").split(/\||\n/).map(s => s.trim()).filter(Boolean);
+    return { i, el: sec, title: title || `Slide ${i + 1}`, tags, steps, notes };
+  });
+
+  // notes from deck-meta, by slide number or by title
+  const mnotes = meta.notes || {};
+  slides.forEach((s, i) => {
+    const byNum = mnotes[String(i + 1)], byTitle = mnotes[s.title];
+    const extra = [].concat(byNum || [], byTitle || []);
+    if (extra.length) s.notes = s.notes.concat(extra);
+  });
+
+  const size = Array.isArray(meta.size) && meta.size.length === 2 ? meta.size : [960, 540];
+  return {
+    id: meta.id || slugify(meta.title || name || (slides[0] && slides[0].title) || "deck"),
+    title: meta.title || (slides[0] && slides[0].title) || name || "Deck",
+    size, api: meta.api || null,
+    figures: (meta.figures || []).map((f, k) => ({
+      kind: f.kind || "figure", num: f.num ?? k + 1, title: f.title || "",
+      src: f.src, page: f.page, source: f.source || "paper",
+    })).filter(f => f.src),
+    slides, styles, scripts, html: htmlText,
+  };
+}
+
+const STOP = new Set("the a an of in on for and or to with by is are do does this that what we our us it its as at from part".split(" "));
+const autoTags = t => (t.toLowerCase().match(/[a-z][a-z-]{2,}/g) || []).filter(w => !STOP.has(w)).slice(0, 4);
+const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "deck";
+
+/* ------------------------------------------------------------------ mounting */
+let D = null;                     // the live deck
+let cur = 0, history = [], editMode = false, paneHidden = false, store = null;
+
+function mountDeck(deck) {
+  D = deck;
+  const stage = $("#deck");
+  const askbtn = $("#askbtn");          // keep it: innerHTML="" would drop it
+  stage.innerHTML = "";
+  $("#deckStyles").textContent = deck.styles || "";
+  document.documentElement.style.setProperty("--slide-w", deck.size[0]);
+  document.documentElement.style.setProperty("--slide-h", deck.size[1]);
+  stage.style.aspectRatio = `${deck.size[0]}/${deck.size[1]}`;
+
+  deck.slides.forEach(s => {
+    const el = document.importNode(s.el, true);
+    el.classList.add("slide");
+    el.dataset.frags = s.steps;
+    el.dataset.step = 0;
+    stage.appendChild(el);
+    s.node = el;
+  });
+  if (askbtn) stage.appendChild(askbtn);
+
+  // deck-authored scripts, opted in with data-deck-script
+  deck.scripts.forEach(code => {
+    const el = document.createElement("script");
+    el.textContent = code;
+    document.body.appendChild(el);
+  });
+
+  store = {
+    key: "prez:" + deck.id,
+    data: LS.get("prez:" + deck.id, { notes: {}, tags: {}, edits: {}, paneHidden: false }),
+  };
+  markEditable();
+  restoreEdits();
+  paneHidden = !!store.data.paneHidden;
+  document.body.classList.toggle("pane-hidden", paneHidden);
+  document.body.classList.remove("no-deck");
+  document.body.classList.add("has-deck");
+  document.title = deck.title + " — Presenter";
+  $("#deckName").textContent = deck.title;
+  cur = 0; history = [];
+  setEdit(false, true);
+  show(0, { push: false });
+  DB.set("last", { html: deck.html, name: deck.title });
+  toast(`${deck.slides.length} slides loaded`);
+}
+
+/* editable regions: whatever the deck marks, else title + body per slide */
+function markEditable() {
+  D.slides.forEach((s, i) => {
+    if (s.node.querySelector("[data-edit]")) return;
+    const t = s.node.querySelector(".ftitle, h1, h2");
+    if (t) t.dataset.edit = `s${i}-t`;
+    const b = s.node.querySelector(".body") || (t ? null : s.node);
+    if (b && b !== s.node) b.dataset.edit = `s${i}-b`;
+    else if (!b && !t) s.node.dataset.edit = `s${i}-all`;
+    else if (!s.node.querySelector(".body")) {
+      // no explicit body: wrap the rest so typing cannot break the layout
+      const rest = [...s.node.children].filter(c => c !== t && !c.classList.contains("askbtn"));
+      rest.forEach((c, k) => (c.dataset.edit = `s${i}-c${k}`));
+    }
+  });
+}
+const editables = () => $$("#deck [data-edit]");
+function restoreEdits() {
+  for (const [k, v] of Object.entries(store.data.edits || {})) {
+    const el = $(`#deck [data-edit="${CSS.escape(k)}"]`);
+    if (el) el.innerHTML = v;
+  }
+}
+function setEdit(on, quiet) {
+  editMode = !!on;
+  editables().forEach(el => {
+    el.setAttribute("contenteditable", editMode ? "true" : "false");
+    if (!el._wired) {
+      el._wired = true;
+      const remember = () => { store.data.edits[el.dataset.edit] = el.innerHTML; save(); };
+      el.addEventListener("input", remember);
+      el.addEventListener("blur", remember);
+    }
+  });
+  document.body.classList.toggle("editing", editMode);
+  const b = $("#editBtn");
+  b.textContent = editMode ? "Editing: on" : "Editing: off";
+  b.classList.toggle("on", editMode);
+  if (!editMode && document.activeElement && document.activeElement.isContentEditable)
+    document.activeElement.blur();
+  if (!quiet) toast(editMode ? "Editing on — click any text to change it"
+                             : "Editing off — slides are locked");
+}
+const save = () => LS.set(store.key, store.data);
+
+/* ------------------------------------------------------------------ navigation */
+function applySteps(node) {
+  const st = +node.dataset.step;
+  node.querySelectorAll("[data-in]").forEach(el => el.classList.toggle("on", +el.dataset.in <= st));
+}
+function show(i, { push = true, step = 0 } = {}) {
+  if (!D) return;
+  if (push && i !== cur) history.push(cur);
+  cur = (i + D.slides.length) % D.slides.length;
+  D.slides.forEach((s, k) => s.node.classList.toggle("active", k === cur));
+  const n = D.slides[cur].node;
+  n.dataset.step = step === "last" ? n.dataset.frags : 0;
+  applySteps(n);
+  $("#counter").textContent = `${cur + 1} / ${D.slides.length}`;
+  renderPane();
+}
+function next() {
+  const n = D.slides[cur].node, st = +n.dataset.step, max = +n.dataset.frags;
+  if (st < max) { n.dataset.step = st + 1; applySteps(n); }
+  else if (cur < D.slides.length - 1) show(cur + 1, { push: false });
+}
+function prev() {
+  const n = D.slides[cur].node, st = +n.dataset.step;
+  if (st > 0) { n.dataset.step = st - 1; applySteps(n); }
+  else if (cur > 0) show(cur - 1, { push: false, step: "last" });
+}
+function back() {
+  if (history.length) show(history.pop(), { push: false });
+  else toast("Nothing to go back to");
+}
+const meta = i => D.slides[i];
+const tagsOf = i => [...new Set([...(meta(i).tags || []), ...((store.data.tags || {})[i] || [])])];
+
+function findSlides(q) {
+  q = (q || "").trim().toLowerCase();
+  if (!q) return [];
+  if (/^\d+$/.test(q)) { const n = +q; return n >= 1 && n <= D.slides.length ? [n - 1] : []; }
+  const tag = q.startsWith("#") ? q.slice(1) : null;
+  const hits = [];
+  D.slides.forEach((s, i) => {
+    const t = s.title.toLowerCase(), tg = tagsOf(i).map(x => x.toLowerCase());
+    if (tag ? tg.some(x => x.startsWith(tag)) : (t.includes(q) || tg.some(x => x.includes(q)))) hits.push(i);
+  });
+  return hits;
+}
+
+/* ------------------------------------------------------------------ side pane */
+function notesOf(i) {
+  return [...(meta(i).notes || []).map(t => ({ kind: "prep", text: t })),
+          ...((store.data.notes || {})[i] || [])];
+}
+function renderPane() {
+  $("#paneTitle").textContent = `Slide ${cur + 1} · ${meta(cur).title}`;
+  const tg = tagsOf(cur);
+  $("#paneTags").innerHTML = tg.map(t => `<span class="tag">#${esc(t)}</span>`).join("")
+    || '<span class="dim">no tags · /tag name</span>';
+  const log = $("#log");
+  log.innerHTML = "";
+  notesOf(cur).forEach(n => addMsg(n.kind, n.html || esc(n.text), false));
+  log.scrollTop = log.scrollHeight;
+}
+function addMsg(kind, html, persist = true) {
+  const log = $("#log");
+  const d = document.createElement("div");
+  d.className = "msg " + kind;
+  const label = { prep: "Prepared", live: "Note", q: "You → Claude", ai: "Claude", data: "Data" }[kind] || kind;
+  d.innerHTML = `<div class="tag-l">${label}</div>${html}`;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+  if (persist) { (store.data.notes[cur] = store.data.notes[cur] || []).push({ kind, html }); save(); }
+  return d;
+}
+function togglePane(force) {
+  paneHidden = force === undefined ? !paneHidden : force;
+  document.body.classList.toggle("pane-hidden", paneHidden);
+  store.data.paneHidden = paneHidden; save();
+}
+
+/* ------------------------------------------------------------------ lightbox */
+let lbIdx = -1;
+function openFigure(f) {
+  if (!f) return toast("Not found");
+  lbIdx = D.figures.indexOf(f);
+  $("#lbImg").src = f.src;
+  $("#lbCap").innerHTML = `<b>${f.kind === "table" ? "Table" : "Figure"} ${esc(f.num)}.</b> ${esc(f.title)}`
+    + `<span class="dim"> · ${esc(f.source || "")}${f.page ? " p." + f.page : ""}`
+    + ` · click to zoom · ←/→ for the next one</span>`;
+  const lb = $("#lightbox"); lb.classList.remove("zoom"); lb.classList.add("open");
+}
+const closeLightbox = () => $("#lightbox").classList.remove("open", "zoom");
+function stepFigure(d) {
+  if (lbIdx < 0 || !D.figures.length) return;
+  openFigure(D.figures[(lbIdx + d + D.figures.length) % D.figures.length]);
+}
+const figByRef = (kind, ref) => {
+  ref = String(ref || "").trim().toLowerCase();
+  const pool = D.figures.filter(f => f.kind === kind);
+  return pool.find(f => String(f.num).toLowerCase() === ref)
+      || pool.find(f => (f.title || "").toLowerCase().includes(ref) && ref)
+      || (!ref ? pool[0] : null);
+};
+
+/* ------------------------------------------------------------------ backend */
+const API = () => (D && D.api) || null;
+try { window.PREZ_TOKEN = window.PREZ_TOKEN || localStorage.getItem("prez_token") || null; } catch (e) {}
+
+async function callApi(path, payload, onText) {
+  if (!API()) {
+    onText('<i>[No backend configured. Add <code>"api": "http://localhost:8787"</code> to the '
+      + "deck's <code>deck-meta</code> and this answer will come from the server.]</i>");
+    return;
+  }
+  try {
+    const r = await fetch(API().replace(/\/$/, "") + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json",
+                 ...(window.PREZ_TOKEN ? { Authorization: "Bearer " + window.PREZ_TOKEN } : {}) },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) { onText(`<i>[Server said ${r.status}. ${esc(await r.text().catch(() => ""))}]</i>`); return; }
+    const ct = r.headers.get("content-type") || "";
+    if (ct.includes("text/plain") || ct.includes("event-stream")) {
+      const rd = r.body.getReader(), dec = new TextDecoder(); let acc = "";
+      for (;;) { const { value, done } = await rd.read(); if (done) break;
+        acc += dec.decode(value, { stream: true }); onText(esc(acc).replace(/\n/g, "<br>")); }
+    } else { onText(renderResult(await r.json())); }
+  } catch (e) { onText("<i>[Could not reach the server: " + esc(e.message) + "]</i>"); }
+}
+function renderResult(j) {
+  if (j.html) return j.html;
+  if (j.text) return esc(j.text).replace(/\n/g, "<br>");
+  if (j.quote) return `<b>${esc(j.quote.symbol)}</b> ${esc(j.quote.price)} `
+    + `<span class="${j.quote.change >= 0 ? "up" : "down"}">${j.quote.change >= 0 ? "▲" : "▼"} ${esc(j.quote.change)}%</span>`
+    + `<div class="dim">${esc(j.quote.asOf || "")}</div>`;
+  return "<pre>" + esc(JSON.stringify(j, null, 1)) + "</pre>";
+}
+function streaming(kind) {
+  const d = addMsg(kind, '<div class="bd">…</div>', false);
+  const body = d.querySelector(".bd");
+  let saved = null;
+  return html => {
+    body.innerHTML = html;
+    $("#log").scrollTop = $("#log").scrollHeight;
+    const rec = { kind, html: `<div class="bd">${html}</div>` };
+    const arr = (store.data.notes[cur] = store.data.notes[cur] || []);
+    if (saved) Object.assign(saved, rec); else { saved = rec; arr.push(rec); }
+    save();
+  };
+}
+const slideContext = () => ({
+  slide: cur + 1, title: meta(cur).title, tags: tagsOf(cur), deck: D.title, deckId: D.id,
+  text: (D.slides[cur].node.innerText || "").trim().slice(0, 4000),
+  notes: notesOf(cur).map(n => n.text || stripTags(n.html || "")),
+});
+
+/* ------------------------------------------------------------------ commands */
+const COMMANDS = [
+  { name: "go", args: "<number | title | #tag>", help: "Jump to a slide", run: a => {
+      const h = findSlides(a);
+      if (!h.length) return toast(`No slide matches “${a}”`);
+      h.length === 1 ? show(h[0]) : pickSlide(h);
+    } },
+  { name: "back", args: "", help: "Return to the slide you jumped from", run: back },
+  { name: "fig", args: "<number | words>", help: "Open a figure", run: a => openFigure(figByRef("figure", a)) },
+  { name: "table", args: "<number | words>", help: "Open a table", run: a => openFigure(figByRef("table", a)) },
+  { name: "find", args: "<words>", help: "Search figures, tables and slides", run: a => {
+      const q = a.toLowerCase();
+      const fs = D.figures.filter(f => (f.title || "").toLowerCase().includes(q));
+      const ss = findSlides(a);
+      if (!fs.length && !ss.length) return toast("Nothing found");
+      openPalette("", [
+        ...fs.map(f => ({ label: `${f.kind === "table" ? "Table" : "Figure"} ${f.num} — ${f.title}`, run: () => openFigure(f) })),
+        ...ss.map(i => ({ label: `Slide ${i + 1} — ${meta(i).title}`, run: () => show(i) })),
+      ]);
+    } },
+  { name: "note", args: "<text>", help: "Save a note on this slide", run: a => addMsg("live", esc(a)) },
+  { name: "tag", args: "<name>", help: "Tag this slide", run: a => {
+      const t = a.replace(/^#/, "").trim(); if (!t) return;
+      (store.data.tags[cur] = store.data.tags[cur] || []).push(t); save(); renderPane(); toast("Tagged #" + t);
+    } },
+  { name: "ask", args: "<question>", help: "Claude, answering only from this deck", run: a => {
+      addMsg("q", esc(a)); callApi("/ask", { question: a, context: slideContext(), scope: "deck" }, streaming("ai"));
+    } },
+  { name: "claude", args: "<question>", help: "Claude, unrestricted", run: a => {
+      addMsg("q", esc(a)); callApi("/claude", { question: a, context: slideContext() }, streaming("ai"));
+    } },
+  { name: "price", args: "<TICKER>", help: "Latest stock quote", run: a => {
+      addMsg("q", "/price " + esc(a)); callApi("/data/price", { symbol: a.trim().toUpperCase() }, streaming("data"));
+    } },
+  { name: "yield", args: "<10y | 2y | …>", help: "Treasury yield (FRED)", run: a => {
+      addMsg("q", "/yield " + esc(a)); callApi("/data/yield", { tenor: a.trim() || "10y" }, streaming("data"));
+    } },
+  { name: "series", args: "<FRED id>", help: "Any FRED series, latest value", run: a => {
+      addMsg("q", "/series " + esc(a)); callApi("/data/series", { id: a.trim().toUpperCase() }, streaming("data"));
+    } },
+  { name: "fx", args: "<USDCAD>", help: "Exchange rate", run: a => {
+      addMsg("q", "/fx " + esc(a)); callApi("/data/fx", { pair: a.trim().toUpperCase() }, streaming("data"));
+    } },
+  { name: "news", args: "<topic>", help: "News snippet", run: a => {
+      addMsg("q", "/news " + esc(a)); callApi("/data/news", { topic: a.trim() }, streaming("data"));
+    } },
+  { name: "edit", args: "[on | off]", help: "Slide editing (off by default)", run: a => {
+      const t = a.trim().toLowerCase(); setEdit(t === "on" ? true : t === "off" ? false : !editMode);
+    } },
+  { name: "revert", args: "[all]", help: "Undo your edits to this slide, or all", run: a => {
+      if (a.trim().toLowerCase() === "all") { store.data.edits = {}; save(); return location.reload(); }
+      let n = 0;
+      D.slides[cur].node.querySelectorAll("[data-edit]").forEach(el => {
+        if (store.data.edits[el.dataset.edit] !== undefined) { delete store.data.edits[el.dataset.edit]; n++; }
+      });
+      save(); n ? location.reload() : toast("No edits on this slide");
+    } },
+  { name: "pane", args: "", help: "Show / hide the side pane", run: () => togglePane() },
+  { name: "open", args: "", help: "Open a different deck", run: () => $("#file").click() },
+  { name: "help", args: "", help: "List commands", run: () => openPalette("",
+      COMMANDS.map(c => ({ label: `/${c.name} ${c.args}`, sub: c.help,
+                           run: () => openPalette("/" + c.name + " ") }))) },
+];
+function runCommand(text) {
+  text = (text || "").trim(); if (!text) return;
+  if (!text.startsWith("/")) return void addMsg("live", esc(text));
+  const m = text.slice(1).match(/^(\S+)\s*([\s\S]*)$/); if (!m) return;
+  const c = COMMANDS.find(c => c.name === m[1].toLowerCase());
+  c ? c.run(m[2]) : toast("Unknown command /" + m[1]);
+}
+const pickSlide = hits => openPalette("", hits.map(i => ({
+  label: `Slide ${i + 1} — ${meta(i).title}`,
+  sub: tagsOf(i).map(t => "#" + t).join(" "), run: () => show(i) })));
+
+/* ------------------------------------------------------------------ palette */
+let palItems = [], palSel = 0, palMode = "cmd";
+function openPalette(text = "", items = null) {
+  const pal = $("#palette");
+  pal.classList.add("open");
+  const inp = $("#palInput");
+  inp.value = text;
+  palMode = items ? "list" : "cmd";
+  palItems = items || [];
+  inp.placeholder = items ? "Choose…" : "Command (/go 12, /fig 3, /ask …) or a note";
+  palSel = 0; renderPal(); inp.focus(); inp.setSelectionRange(text.length, text.length);
+}
+const closePalette = () => { $("#palette").classList.remove("open"); $("#palInput").blur(); };
+function suggest(text) {
+  if (palMode === "list") return palItems.filter(it => it.label.toLowerCase().includes(text.toLowerCase()));
+  if (!text.startsWith("/"))
+    return text ? [{ label: "Save as note on this slide", sub: text, run: () => runCommand(text) }] : [];
+  const m = text.slice(1).match(/^(\S*)\s?([\s\S]*)$/);
+  const name = m[1].toLowerCase(), arg = m[2];
+  const exact = COMMANDS.find(c => c.name === name);
+  if (exact && (text.includes(" ") || arg)) {
+    if (exact.name === "go" && arg)
+      return findSlides(arg).slice(0, 8).map(i => ({ label: `Slide ${i + 1} — ${meta(i).title}`,
+        sub: tagsOf(i).map(t => "#" + t).join(" "), run: () => show(i) }));
+    if (exact.name === "fig" || exact.name === "table") {
+      const k = exact.name === "fig" ? "figure" : "table";
+      return D.figures.filter(f => f.kind === k &&
+          (!arg || String(f.num).startsWith(arg) || (f.title || "").toLowerCase().includes(arg.toLowerCase())))
+        .map(f => ({ label: `${k === "table" ? "Table" : "Figure"} ${f.num} — ${f.title}`,
+                     sub: f.page ? "page " + f.page : "", run: () => openFigure(f) }));
+    }
+    return [{ label: `/${exact.name} ${arg}`, sub: exact.help, run: () => runCommand(text) }];
+  }
+  return COMMANDS.filter(c => c.name.startsWith(name)).map(c => ({
+    label: `/${c.name} ${c.args}`, sub: c.help,
+    run: () => { if (c.args) openPalette("/" + c.name + " "); else { closePalette(); c.run(""); } } }));
+}
+function renderPal() {
+  const list = $("#palList"), items = suggest($("#palInput").value);
+  list.innerHTML = ""; palSel = Math.min(palSel, Math.max(0, items.length - 1));
+  items.forEach((it, k) => {
+    const d = document.createElement("div");
+    d.className = "pal-item" + (k === palSel ? " sel" : "");
+    d.innerHTML = `<div>${esc(it.label)}</div>${it.sub ? `<div class="sub">${esc(it.sub)}</div>` : ""}`;
+    d.onmousedown = e => { e.preventDefault(); closePalette(); it.run(); };
+    list.appendChild(d);
+  });
+  list._items = items;
+}
+
+/* ------------------------------------------------------------------ loading UI */
+async function loadFile(file) {
+  try {
+    mountDeck(parseDeck(await file.text(), file.name.replace(/\.html?$/i, "")));
+  } catch (e) { toast(e.message); console.error(e); }
+}
+async function loadUrl(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} loading ${url}`);
+  mountDeck(parseDeck(await r.text(), url.split("/").pop()));
+}
+async function boot() {
+  const inline = document.getElementById("deck-source");
+  if (inline) {
+    // bundle.py escapes "</script" so the payload can sit inside a <script>
+    const html = inline.textContent.replace(/<\\\/script/g, "</script");
+    mountDeck(parseDeck(html, document.title));
+    return;
+  }
+  const url = new URLSearchParams(location.search).get("deck");
+  if (url) { try { return await loadUrl(url); } catch (e) { toast(e.message); } }
+  const last = await DB.get("last");
+  if (last && last.html) {
+    try { mountDeck(parseDeck(last.html, last.name)); toast("Reopened your last deck"); return; }
+    catch (e) { /* fall through to the drop zone */ }
+  }
+  document.body.classList.add("no-deck");
+}
+
+/* ------------------------------------------------------------------ wiring */
+document.addEventListener("DOMContentLoaded", () => {
+  $("#prev").onclick = prev; $("#next").onclick = next;
+  $("#openPal").onclick = () => openPalette("");
+  $("#hidePane").onclick = () => togglePane();
+  $("#editBtn").onclick = () => setEdit(!editMode);
+  $("#openBtn").onclick = () => $("#file").click();
+  $("#file").onchange = e => e.target.files[0] && loadFile(e.target.files[0]);
+  $(".lb-prev").onclick = e => { e.stopPropagation(); stepFigure(-1); };
+  $(".lb-next").onclick = e => { e.stopPropagation(); stepFigure(1); };
+  $("#lbImg").onclick = e => { e.stopPropagation(); $("#lightbox").classList.toggle("zoom"); };
+  $("#lightbox").addEventListener("click", e => {
+    if (e.target === $("#lightbox") || e.target.classList.contains("lb-box")) closeLightbox();
+  });
+
+  const inp = $("#palInput");
+  inp.addEventListener("input", () => { palSel = 0; renderPal(); });
+  inp.addEventListener("keydown", e => {
+    const items = $("#palList")._items || [];
+    if (e.key === "ArrowDown") { e.preventDefault(); palSel = Math.min(palSel + 1, items.length - 1); renderPal(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); palSel = Math.max(palSel - 1, 0); renderPal(); }
+    else if (e.key === "Tab") { e.preventDefault();
+      if (items[palSel] && items[palSel].label.startsWith("/")) { inp.value = items[palSel].label.split(" <")[0] + " "; renderPal(); } }
+    else if (e.key === "Enter") { e.preventDefault();
+      const v = inp.value;
+      if (palMode === "list") { if (items[palSel]) { closePalette(); items[palSel].run(); } return; }
+      const routed = /^\/(go|fig|table)\s/.test(v) || !v.startsWith("/");
+      if (items[palSel] && routed && items.length) { closePalette(); items[palSel].run(); }
+      else { closePalette(); runCommand(v); } }
+    else if (e.key === "Escape") { e.preventDefault(); closePalette(); }
+  });
+
+  const cmd = $("#cmd");
+  cmd.addEventListener("keydown", e => {
+    if (e.key === "Enter") { runCommand(cmd.value); cmd.value = ""; }
+    if (e.key === "Escape") cmd.blur();
+  });
+  $("#send").onclick = () => { runCommand(cmd.value); cmd.value = ""; };
+
+  // drag and drop a deck anywhere
+  ["dragenter", "dragover"].forEach(t => document.addEventListener(t, e => {
+    e.preventDefault(); document.body.classList.add("dragging");
+  }));
+  ["dragleave", "drop"].forEach(t => document.addEventListener(t, e => {
+    if (t === "dragleave" && e.relatedTarget) return;
+    document.body.classList.remove("dragging");
+  }));
+  document.addEventListener("drop", e => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  // selection -> ask Claude
+  const askbtn = $("#askbtn"); let selText = "";
+  document.addEventListener("selectionchange", () => {
+    const sel = window.getSelection(), t = sel.toString().trim();
+    const stage = $("#deck");
+    if (!t || !sel.rangeCount || !stage.contains(sel.anchorNode)) { askbtn.style.display = "none"; return; }
+    selText = t;
+    const r = sel.getRangeAt(0).getBoundingClientRect(), d = stage.getBoundingClientRect();
+    askbtn.style.display = "block";
+    askbtn.style.left = Math.max(0, r.left - d.left) + "px";
+    askbtn.style.top = (r.bottom - d.top + 6) + "px";
+  });
+  askbtn.onmousedown = e => {
+    e.preventDefault(); askbtn.style.display = "none"; window.getSelection().removeAllRanges();
+    openPalette('/ask Explain: “' + selText.slice(0, 140) + '”');
+  };
+
+  document.addEventListener("keydown", e => {
+    const ae = document.activeElement;
+    const typing = ae && (ae.isContentEditable || /INPUT|TEXTAREA/.test(ae.tagName));
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault(); $("#palette").classList.contains("open") ? closePalette() : openPalette(""); return; }
+    if ((e.metaKey || e.ctrlKey) && e.key === "\\") { e.preventDefault(); togglePane(); return; }
+    if (e.key === "Escape") {
+      if ($("#lightbox").classList.contains("open")) return closeLightbox();
+      if ($("#palette").classList.contains("open")) return closePalette();
+      if (typing) ae.blur();
+      return;
+    }
+    if (typing || $("#palette").classList.contains("open") || !D) return;
+    if ($("#lightbox").classList.contains("open")) {
+      if (e.key === "ArrowRight") { e.preventDefault(); stepFigure(1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); stepFigure(-1); }
+      if (e.key.toLowerCase() === "z") $("#lightbox").classList.toggle("zoom");
+      return;
+    }
+    if (e.key === "/") { e.preventDefault(); openPalette("/"); return; }
+    const k = e.key.toLowerCase();
+    if (k === "h") return togglePane();
+    if (k === "e") return setEdit(!editMode);
+    if (k === "b") return back();
+    if (k === "f") return toggleFull();
+    if (k === "o") return $("#file").click();
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); next(); }
+    if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); prev(); }
+    if (e.key === "Home") show(0);
+    if (e.key === "End") show(D.slides.length - 1);
+  });
+
+  boot();
+});
+
+function toggleFull() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+  else document.exitFullscreen();
+}
+let toastT;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+window.PREZ = { show: i => show(i), next, prev, back, openPalette, closePalette, runCommand,
+                openFigure, togglePane, setEdit, loadFile, get deck() { return D; } };
+})();

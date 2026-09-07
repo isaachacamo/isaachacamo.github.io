@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Example deck — Presenter</title>
+
+<!-- Deck metadata. Everything here is optional; `id` should stay stable across
+     rebuilds so your notes, tags and edits survive. -->
+<script type="application/json" id="deck-meta">
+{
+  "id": "example-deck",
+  "title": "Households and Entrepreneurial Risk",
+  "size": [453.543, 255.118],
+
+  "notes": {
+    "1": ["Say hello; this is the 8-minute version.",
+          "Ask early: who here has a spouse with a salaried job?"],
+    "Why households matter": ["70% of US business owners are married.",
+                              "Anticipated question: dual-entrepreneur couples are excluded."],
+    "The 2014 oil collapse": ["WTI $105 → $50 in the second half of 2014.",
+                              "Live check if asked: /price XOM or /yield 10y"],
+    "4": ["Press → twice: oil price first, then unemployment.",
+          "Related: /table 1 for the balance table."]
+  },
+
+  "figures": [
+    { "kind": "figure", "num": 1, "title": "Oil price and unemployment, 2010-2022",
+      "source": "paper", "page": 12, "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MjAgMjQwIiB3aWR0aD0iNDIwIiBoZWlnaHQ9IjI0MCI+PHJlY3Qgd2lkdGg9IjQyMCIgaGVpZ2h0PSIyNDAiIGZpbGw9IiNmZmYiLz48ZyBzdHJva2U9IiNlNmU2ZTYiIHN0cm9rZS13aWR0aD0iMSI+PGxpbmUgeDE9IjUwIiB5MT0iNDAiIHgyPSI0MDAiIHkyPSI0MCIvPjxsaW5lIHgxPSI1MCIgeTE9IjgwIiB4Mj0iNDAwIiB5Mj0iODAiLz48bGluZSB4MT0iNTAiIHkxPSIxMjAiIHgyPSI0MDAiIHkyPSIxMjAiLz48bGluZSB4MT0iNTAiIHkxPSIxNjAiIHgyPSI0MDAiIHkyPSIxNjAiLz48bGluZSB4MT0iNTAiIHkxPSIyMDAiIHgyPSI0MDAiIHkyPSIyMDAiLz48L2c+PGxpbmUgeDE9IjUwIiB5MT0iMjAwIiB4Mj0iNDAwIiB5Mj0iMjAwIiBzdHJva2U9IiMzMzMiLz48bGluZSB4MT0iNTAiIHkxPSIzMCIgeDI9IjUwIiB5Mj0iMjAwIiBzdHJva2U9IiMzMzMiLz48dGV4dCB4PSIyMjUiIHk9IjIyOCIgZm9udC1zaXplPSIxMSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPlllYXI8L3RleHQ+PHRleHQgeD0iNTAiIHk9IjIxNSIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjIwMTA8L3RleHQ+PHRleHQgeD0iMTM3IiB5PSIyMTUiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4yMDEzPC90ZXh0Pjx0ZXh0IHg9IjIyNSIgeT0iMjE1IiBmb250LXNpemU9IjEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+MjAxNjwvdGV4dD48dGV4dCB4PSIzMTIiIHk9IjIxNSIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjIwMTk8L3RleHQ+PHRleHQgeD0iNDAwIiB5PSIyMTUiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4yMDIyPC90ZXh0Pjx0ZXh0IHg9IjE4IiB5PSIxMTUiIGZvbnQtc2l6ZT0iMTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiB0cmFuc2Zvcm09InJvdGF0ZSgtOTAgMTggMTE1KSI+UmF0ZSAoJSk8L3RleHQ+PHBvbHlsaW5lIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2MwMzkyYiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtZGFzaGFycmF5PSI0IDMiIHBvaW50cz0iNTAsNzAgOTAsNjAgMTMwLDY2IDE3MCw1OCAyMTAsMTUwIDI1MCwxNjggMjkwLDE0MCAzMzAsMTMyIDM3MCwxMjAgNDAwLDEyNiIvPjx0ZXh0IHg9IjMwMCIgeT0iNjAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNjMDM5MmIiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5vaWwgcHJpY2U8L3RleHQ+PHBvbHlsaW5lIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzExMSIgc3Ryb2tlLXdpZHRoPSIyIiBwb2ludHM9IjUwLDE1MCA5MCwxNTggMTMwLDE2NCAxNzAsMTcwIDIxMCwxMjAgMjUwLDEwMiAyOTAsMTI2IDMzMCwxNDQgMzcwLDE1MiA0MDAsMTQ4Ii8+PHRleHQgeD0iMzAwIiB5PSIxNzYiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj51bmVtcGxveW1lbnQ8L3RleHQ+PC9zdmc+" },
+    { "kind": "table", "num": 1, "title": "Balancing tests in the year before the shock",
+      "source": "paper", "page": 31, "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjAgMjAwIiB3aWR0aD0iNTIwIiBoZWlnaHQ9IjIwMCIgZm9udC1mYW1pbHk9InNlcmlmIj4KPHJlY3Qgd2lkdGg9IjUyMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNmZmYiLz4KPGxpbmUgeDE9IjIwIiB5MT0iMzQiIHgyPSI1MDAiIHkyPSIzNCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNCIvPgo8bGluZSB4MT0iMjAiIHkxPSI2MCIgeDI9IjUwMCIgeTI9IjYwIiBzdHJva2U9IiMwMDAiLz4KPGxpbmUgeDE9IjIwIiB5MT0iMTc2IiB4Mj0iNTAwIiB5Mj0iMTc2IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS40Ii8+Cjx0ZXh0IHg9IjMwIiB5PSI1MiIgZm9udC1zaXplPSIxMyI+VmFyaWFibGU8L3RleHQ+Cjx0ZXh0IHg9IjI1MCIgeT0iNTIiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlRyZWF0ZWQ8L3RleHQ+Cjx0ZXh0IHg9IjM4MCIgeT0iNTIiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkNvbnRyb2w8L3RleHQ+Cjx0ZXh0IHg9IjMwIiB5PSI4MiIgZm9udC1zaXplPSIxMyI+RWFybmluZ3MgKDAwMCk8L3RleHQ+PHRleHQgeD0iMjUwIiB5PSI4MiIgZm9udC1zaXplPSIxMyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+OTguODQ8L3RleHQ+PHRleHQgeD0iMzgwIiB5PSI4MiIgZm9udC1zaXplPSIxMyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+MTAyLjE5PC90ZXh0Pgo8dGV4dCB4PSIzMCIgeT0iMTA2IiBmb250LXNpemU9IjEzIj5SZXZlbnVlICgwMDApPC90ZXh0Pjx0ZXh0IHg9IjI1MCIgeT0iMTA2IiBmb250LXNpemU9IjEzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj42NDguOTI8L3RleHQ+PHRleHQgeD0iMzgwIiB5PSIxMDYiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjYzOC4yODwvdGV4dD4KPHRleHQgeD0iMzAiIHk9IjEzMCIgZm9udC1zaXplPSIxMyI+TGV2ZXJhZ2U8L3RleHQ+PHRleHQgeD0iMjUwIiB5PSIxMzAiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjAuMjc8L3RleHQ+PHRleHQgeD0iMzgwIiB5PSIxMzAiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjAuMjg8L3RleHQ+Cjx0ZXh0IHg9IjMwIiB5PSIxNTQiIGZvbnQtc2l6ZT0iMTMiPk9ic2VydmF0aW9uczwvdGV4dD48dGV4dCB4PSIyNTAiIHk9IjE1NCIgZm9udC1zaXplPSIxMyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+MiwzNjU8L3RleHQ+PHRleHQgeD0iMzgwIiB5PSIxNTQiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjIsMzY1PC90ZXh0Pgo8L3N2Zz4=" }
+  ]
+}
+</script>
+
+<!-- Deck styling. `--pt` is one point of the size declared above, so these
+     numbers are the same ones you would write in Beamer. -->
+<style>
+  .slide {
+    font-family: "Latin Modern Sans", "Helvetica Neue", system-ui, sans-serif;
+    font-size: calc(9.2 * var(--pt));
+    line-height: calc(11 * var(--pt));
+  }
+  .ftitle {
+    position: absolute; left: 0; right: 0; top: calc(9 * var(--pt));
+    text-align: center; color: #19196e; font-size: calc(14.3 * var(--pt));
+  }
+  .body {
+    position: absolute; left: calc(40 * var(--pt)); right: calc(30 * var(--pt));
+    top: calc(50 * var(--pt));
+  }
+  .it { position: relative; padding-left: calc(10 * var(--pt)); margin-top: calc(9 * var(--pt)); }
+  .it:first-child { margin-top: 0; }
+  .it::before { content: ""; position: absolute; left: 0; top: .46em;
+    width: .3em; height: .3em; border-radius: 50%; background: #851f26; }
+  .sub { padding-left: calc(32 * var(--pt)); margin-top: calc(4 * var(--pt)); }
+  .sub::before { content: "→"; background: none; border-radius: 0; width: auto; height: auto;
+    color: #7f7f7f; left: calc(22 * var(--pt)); top: 0; }
+  .r { color: #851f26; font-weight: 700; }
+  .g { color: #008080; font-weight: 700; }
+  .grey { color: #7f7f7f; }
+  .centre { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; }
+  .name { font-size: calc(10.9 * var(--pt)); margin-top: calc(28 * var(--pt)); }
+  .aff { color: #7f7f7f; font-size: calc(9 * var(--pt)); }
+  .venue { color: #851f26; margin-top: calc(26 * var(--pt)); line-height: calc(13 * var(--pt)); }
+  figure { position: absolute; left: 0; right: 0; top: calc(38 * var(--pt));
+    bottom: calc(12 * var(--pt)); margin: 0; }
+  figure img { width: 100%; height: 100%; object-fit: contain; }
+  figcaption { position: absolute; left: 0; right: 0; bottom: calc(-10 * var(--pt));
+    text-align: center; font-size: calc(7.5 * var(--pt)); color: #7f7f7f; }
+</style>
+</head>
+<body>
+
+<!-- 1. Title slide ------------------------------------------------------- -->
+<section class="slide" data-title="Title" data-tags="title">
+  <div class="centre">
+    <div style="color:#19196e;font-size:calc(14.3*var(--pt))">Households and Entrepreneurial Risk</div>
+    <div class="name">Isaac Hacamo</div>
+    <div class="aff">Indiana University</div>
+    <div class="venue">Example seminar<br>September 2026</div>
+  </div>
+</section>
+
+<!-- 2. Bullets that arrive in three steps (f1, f2) ------------------------ -->
+<section class="slide" data-tags="motivation,insurance">
+  <h1 class="ftitle">Why households matter</h1>
+  <div class="body">
+    <div class="it">Most <span class="g">business owners are married</span> — about 70% in the US —
+      yet we model them as lone decision-makers.</div>
+    <div class="it f1">A spouse's salary is <span class="r">household insurance</span>.
+      <div class="it sub">It cushions consumption when the firm does badly.</div>
+    </div>
+    <div class="it f2">But that insurance is <span class="r">itself risky</span>: spouses lose jobs
+      in recessions, exactly when firms are also distressed.</div>
+  </div>
+</section>
+
+<!-- 3. A figure that builds up, one image per step ------------------------ -->
+<section class="slide" data-title="The 2014 oil collapse" data-tags="oil,shock" data-steps="2"
+         data-notes="Draw the oil price first, then unemployment.|OPEC held output in November 2014.">
+  <h1 class="ftitle">The 2014 oil collapse</h1>
+  <figure>
+    <div class="stack">
+      <img data-in="0" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MjAgMjQwIiB3aWR0aD0iNDIwIiBoZWlnaHQ9IjI0MCI+PHJlY3Qgd2lkdGg9IjQyMCIgaGVpZ2h0PSIyNDAiIGZpbGw9IiNmZmYiLz48ZyBzdHJva2U9IiNlNmU2ZTYiIHN0cm9rZS13aWR0aD0iMSI+PGxpbmUgeDE9IjUwIiB5MT0iNDAiIHgyPSI0MDAiIHkyPSI0MCIvPjxsaW5lIHgxPSI1MCIgeTE9IjgwIiB4Mj0iNDAwIiB5Mj0iODAiLz48bGluZSB4MT0iNTAiIHkxPSIxMjAiIHgyPSI0MDAiIHkyPSIxMjAiLz48bGluZSB4MT0iNTAiIHkxPSIxNjAiIHgyPSI0MDAiIHkyPSIxNjAiLz48bGluZSB4MT0iNTAiIHkxPSIyMDAiIHgyPSI0MDAiIHkyPSIyMDAiLz48L2c+PGxpbmUgeDE9IjUwIiB5MT0iMjAwIiB4Mj0iNDAwIiB5Mj0iMjAwIiBzdHJva2U9IiMzMzMiLz48bGluZSB4MT0iNTAiIHkxPSIzMCIgeDI9IjUwIiB5Mj0iMjAwIiBzdHJva2U9IiMzMzMiLz48dGV4dCB4PSIyMjUiIHk9IjIyOCIgZm9udC1zaXplPSIxMSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPlllYXI8L3RleHQ+PHRleHQgeD0iNTAiIHk9IjIxNSIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjIwMTA8L3RleHQ+PHRleHQgeD0iMTM3IiB5PSIyMTUiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4yMDEzPC90ZXh0Pjx0ZXh0IHg9IjIyNSIgeT0iMjE1IiBmb250LXNpemU9IjEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+MjAxNjwvdGV4dD48dGV4dCB4PSIzMTIiIHk9IjIxNSIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjIwMTk8L3RleHQ+PHRleHQgeD0iNDAwIiB5PSIyMTUiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4yMDIyPC90ZXh0Pjx0ZXh0IHg9IjE4IiB5PSIxMTUiIGZvbnQtc2l6ZT0iMTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiB0cmFuc2Zvcm09InJvdGF0ZSgtOTAgMTggMTE1KSI+UmF0ZSAoJSk8L3RleHQ+PC9zdmc+" alt="empty axes">
+      <img data-in="1" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MjAgMjQwIiB3aWR0aD0iNDIwIiBoZWlnaHQ9IjI0MCI+PHJlY3Qgd2lkdGg9IjQyMCIgaGVpZ2h0PSIyNDAiIGZpbGw9IiNmZmYiLz48ZyBzdHJva2U9IiNlNmU2ZTYiIHN0cm9rZS13aWR0aD0iMSI+PGxpbmUgeDE9IjUwIiB5MT0iNDAiIHgyPSI0MDAiIHkyPSI0MCIvPjxsaW5lIHgxPSI1MCIgeTE9IjgwIiB4Mj0iNDAwIiB5Mj0iODAiLz48bGluZSB4MT0iNTAiIHkxPSIxMjAiIHgyPSI0MDAiIHkyPSIxMjAiLz48bGluZSB4MT0iNTAiIHkxPSIxNjAiIHgyPSI0MDAiIHkyPSIxNjAiLz48bGluZSB4MT0iNTAiIHkxPSIyMDAiIHgyPSI0MDAiIHkyPSIyMDAiLz48L2c+PGxpbmUgeDE9IjUwIiB5MT0iMjAwIiB4Mj0iNDAwIiB5Mj0iMjAwIiBzdHJva2U9IiMzMzMiLz48bGluZSB4MT0iNTAiIHkxPSIzMCIgeDI9IjUwIiB5Mj0iMjAwIiBzdHJva2U9IiMzMzMiLz48dGV4dCB4PSIyMjUiIHk9IjIyOCIgZm9udC1zaXplPSIxMSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPlllYXI8L3RleHQ+PHRleHQgeD0iNTAiIHk9IjIxNSIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjIwMTA8L3RleHQ+PHRleHQgeD0iMTM3IiB5PSIyMTUiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4yMDEzPC90ZXh0Pjx0ZXh0IHg9IjIyNSIgeT0iMjE1IiBmb250LXNpemU9IjEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+MjAxNjwvdGV4dD48dGV4dCB4PSIzMTIiIHk9IjIxNSIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjIwMTk8L3RleHQ+PHRleHQgeD0iNDAwIiB5PSIyMTUiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4yMDIyPC90ZXh0Pjx0ZXh0IHg9IjE4IiB5PSIxMTUiIGZvbnQtc2l6ZT0iMTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiB0cmFuc2Zvcm09InJvdGF0ZSgtOTAgMTggMTE1KSI+UmF0ZSAoJSk8L3RleHQ+PHBvbHlsaW5lIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2MwMzkyYiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtZGFzaGFycmF5PSI0IDMiIHBvaW50cz0iNTAsNzAgOTAsNjAgMTMwLDY2IDE3MCw1OCAyMTAsMTUwIDI1MCwxNjggMjkwLDE0MCAzMzAsMTMyIDM3MCwxMjAgNDAwLDEyNiIvPjx0ZXh0IHg9IjMwMCIgeT0iNjAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNjMDM5MmIiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5vaWwgcHJpY2U8L3RleHQ+PC9zdmc+" alt="oil price">
+      <img data-in="2" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MjAgMjQwIiB3aWR0aD0iNDIwIiBoZWlnaHQ9IjI0MCI+PHJlY3Qgd2lkdGg9IjQyMCIgaGVpZ2h0PSIyNDAiIGZpbGw9IiNmZmYiLz48ZyBzdHJva2U9IiNlNmU2ZTYiIHN0cm9rZS13aWR0aD0iMSI+PGxpbmUgeDE9IjUwIiB5MT0iNDAiIHgyPSI0MDAiIHkyPSI0MCIvPjxsaW5lIHgxPSI1MCIgeTE9IjgwIiB4Mj0iNDAwIiB5Mj0iODAiLz48bGluZSB4MT0iNTAiIHkxPSIxMjAiIHgyPSI0MDAiIHkyPSIxMjAiLz48bGluZSB4MT0iNTAiIHkxPSIxNjAiIHgyPSI0MDAiIHkyPSIxNjAiLz48bGluZSB4MT0iNTAiIHkxPSIyMDAiIHgyPSI0MDAiIHkyPSIyMDAiLz48L2c+PGxpbmUgeDE9IjUwIiB5MT0iMjAwIiB4Mj0iNDAwIiB5Mj0iMjAwIiBzdHJva2U9IiMzMzMiLz48bGluZSB4MT0iNTAiIHkxPSIzMCIgeDI9IjUwIiB5Mj0iMjAwIiBzdHJva2U9IiMzMzMiLz48dGV4dCB4PSIyMjUiIHk9IjIyOCIgZm9udC1zaXplPSIxMSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPlllYXI8L3RleHQ+PHRleHQgeD0iNTAiIHk9IjIxNSIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjIwMTA8L3RleHQ+PHRleHQgeD0iMTM3IiB5PSIyMTUiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4yMDEzPC90ZXh0Pjx0ZXh0IHg9IjIyNSIgeT0iMjE1IiBmb250LXNpemU9IjEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+MjAxNjwvdGV4dD48dGV4dCB4PSIzMTIiIHk9IjIxNSIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjIwMTk8L3RleHQ+PHRleHQgeD0iNDAwIiB5PSIyMTUiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4yMDIyPC90ZXh0Pjx0ZXh0IHg9IjE4IiB5PSIxMTUiIGZvbnQtc2l6ZT0iMTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiB0cmFuc2Zvcm09InJvdGF0ZSgtOTAgMTggMTE1KSI+UmF0ZSAoJSk8L3RleHQ+PHBvbHlsaW5lIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2MwMzkyYiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtZGFzaGFycmF5PSI0IDMiIHBvaW50cz0iNTAsNzAgOTAsNjAgMTMwLDY2IDE3MCw1OCAyMTAsMTUwIDI1MCwxNjggMjkwLDE0MCAzMzAsMTMyIDM3MCwxMjAgNDAwLDEyNiIvPjx0ZXh0IHg9IjMwMCIgeT0iNjAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNjMDM5MmIiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5vaWwgcHJpY2U8L3RleHQ+PHBvbHlsaW5lIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzExMSIgc3Ryb2tlLXdpZHRoPSIyIiBwb2ludHM9IjUwLDE1MCA5MCwxNTggMTMwLDE2NCAxNzAsMTcwIDIxMCwxMjAgMjUwLDEwMiAyOTAsMTI2IDMzMCwxNDQgMzcwLDE1MiA0MDAsMTQ4Ii8+PHRleHQgeD0iMzAwIiB5PSIxNzYiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj51bmVtcGxveW1lbnQ8L3RleHQ+PC9zdmc+" alt="oil price and unemployment">
+    </div>
+    <figcaption>WTI and the unemployment rate in oil-producing regions</figcaption>
+  </figure>
+</section>
+
+<!-- 4. A plain content slide --------------------------------------------- -->
+<section class="slide" data-tags="design,identification">
+  <h1 class="ftitle">Identification</h1>
+  <div class="body">
+    <div class="it">Compare entrepreneurs whose spouse worked in oil with otherwise
+      identical entrepreneurs whose spouse did not.</div>
+    <div class="it">Matched on gender, geography and 4-digit industry.
+      <div class="it sub">Balance holds in the year before the shock — <span class="grey">/table 1</span>.</div>
+    </div>
+    <div class="it f1">The shock is <span class="g">unexpected</span> and outside the firm,
+      so the comparison is credible.</div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Presenter</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="presenter.css">
+<style id="deckStyles"></style>
+</head>
+<body class="no-deck">
+
+<div class="pz">
+  <div class="stage">
+
+    <div id="welcome">
+      <h1>Presenter</h1>
+      <p>Drop an HTML deck anywhere on this page, or pick one.</p>
+      <div class="drop">
+        <div>Drag <code>your-talk.html</code> here</div>
+        <button id="openBtn">Choose a deck…</button>
+        <input type="file" id="file" accept=".html,.htm,text/html" hidden>
+      </div>
+      <p class="keys">
+        A deck is a plain HTML file whose slides are <code>&lt;section class="slide"&gt;</code>.
+        See <code>DECK-SPEC.md</code>. Your last deck reopens automatically.
+      </p>
+      <p class="keys">
+        <span class="kbd">/</span> commands ·
+        <span class="kbd">E</span> edit ·
+        <span class="kbd">H</span> pane ·
+        <span class="kbd">B</span> back ·
+        <span class="kbd">F</span> full screen ·
+        <span class="kbd">O</span> open another deck
+      </p>
+    </div>
+
+    <div class="deck" id="deck">
+      <div class="askbtn" id="askbtn">Ask Claude about this &#8599;</div>
+    </div>
+
+    <div class="bar">
+      <button id="prev" title="Previous (←)">&#8592;</button>
+      <span id="counter"></span>
+      <button id="next" title="Next (→)">&#8594;</button>
+      <button id="openPal" title="Command palette (⌘K or /)">&#8984;K command</button>
+      <button id="editBtn" title="Toggle editing (E)">Editing: off</button>
+      <span class="grow"></span>
+      <span id="deckName"></span>
+      <span><span class="kbd">/</span> command
+        <span class="kbd">E</span> edit
+        <span class="kbd">H</span> pane
+        <span class="kbd">B</span> back
+        <span class="kbd">F</span> full</span>
+      <button id="hidePane" title="Show / hide the pane (H)">Hide pane</button>
+    </div>
+  </div>
+
+  <aside id="pane">
+    <header>
+      <div id="paneTitle"></div>
+      <div id="paneTags"></div>
+    </header>
+    <div id="log"></div>
+    <div class="inp">
+      <input id="cmd" placeholder="Note, or /go 6, /fig 3, /ask &hellip;">
+      <button id="send">Send</button>
+    </div>
+  </aside>
+</div>
+
+<div id="palette">
+  <div class="pal-box">
+    <input id="palInput" autocomplete="off" spellcheck="false">
+    <div id="palList"></div>
+    <div class="pal-hint">&#8593;&#8595; choose &middot; Tab complete &middot; Enter run &middot; Esc close &middot; /help for everything</div>
+  </div>
+</div>
+
+<div id="lightbox">
+  <div class="lb-close">Esc to close</div>
+  <div class="lb-nav lb-prev">&#8249;</div>
+  <div class="lb-nav lb-next">&#8250;</div>
+  <div class="lb-box">
+    <div class="lb-fig"><img id="lbImg" alt=""></div>
+    <div id="lbCap"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="presenter.js"></script>
+</body>
+</html>

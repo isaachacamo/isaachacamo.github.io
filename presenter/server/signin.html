@@ -1,0 +1,24 @@
+<!-- Minimal Google sign-in page. Open it once; it stores the ID token that the
+     presenter sends with every request. Serve it from the same origin as your decks. -->
+<!DOCTYPE html><meta charset="utf-8"><title>Sign in — Presenter</title>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>body{font:16px system-ui;margin:15vh auto;max-width:34rem;padding:0 1rem;color:#222}
+ .ok{color:#0a7d32} .no{color:#a4262c}</style>
+<h1>Presenter</h1>
+<p>Sign in with the Google account on the allowlist. The token stays in this browser;
+   your API keys stay on the server.</p>
+<div id="btn"></div>
+<p id="msg"></p>
+<script>
+  const CLIENT_ID = "REPLACE_WITH_GOOGLE_CLIENT_ID";
+  function onCredential(r){
+    localStorage.setItem("prez_token", r.credential);
+    const p = JSON.parse(atob(r.credential.split(".")[1]));
+    document.getElementById("msg").innerHTML =
+      `<span class="ok">Signed in as ${p.email}.</span> You can open your deck now.`;
+  }
+  window.onload = () => {
+    google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onCredential });
+    google.accounts.id.renderButton(document.getElementById("btn"), { theme: "outline", size: "large" });
+  };
+</script>

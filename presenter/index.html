@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Presenter</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="canonical" href="app/presenter.html">
+<script>
+  // Forward to the app, keeping ?deck=... — resolved against THIS page, so a
+  // path relative to the site root still points at the right file from /app/.
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var deck = q.get("deck");
+    if (deck) q.set("deck", new URL(deck, location.href).href);
+    var s = q.toString();
+    location.replace("app/presenter.html" + (s ? "?" + s : "") + location.hash);
+  })();
+</script>
+<style>
+  body{font:16px/1.5 system-ui,sans-serif;margin:18vh auto;max-width:32rem;padding:0 1rem;color:#222}
+  a{color:#19196e}
+</style>
+</head>
+<body>
+  <h1>Presenter</h1>
+  <p><a href="app/presenter.html">Open the presenter</a> — then drop an HTML deck onto the page.</p>
+  <p>Decks stay on your machine: nothing is uploaded.</p>
+</body>
+</html>

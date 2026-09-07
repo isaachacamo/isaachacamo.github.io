@@ -1,0 +1,19 @@
+# Your decks are yours: they are usually unpublished work, and a bundled deck
+# runs to several megabytes. Publish one deliberately with `git add -f`.
+decks/*
+!decks/.gitkeep
+
+# Superseded builds and scratch output — large, and not part of the tool.
+extras/old-build/
+extras/old-src-empty/
+Claude outputs/
+
+# Secrets and local state
+server/.env
+server/notes/
+server/decks/
+
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
