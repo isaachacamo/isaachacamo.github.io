@@ -265,7 +265,7 @@ function roll(fromIdx, toIdx, dir) {
     D.slides.forEach((s, k) => s.node.classList.toggle("active", k === toIdx));
     from.classList.remove("leaveUp", "leaveDown");
     to.classList.remove("enterUp", "enterDown");
-  }, 360);
+  }, 500);
 }
 
 function show(i, { push = true, step = 0, dir } = {}) {
@@ -336,11 +336,46 @@ function addMsg(kind, html, persist = true) {
   if (persist) {
     (store.data.notes[cur] = store.data.notes[cur] || []).push({ kind, html });
     save(); renderNoteBadge();
+    if (kind === "live") flyNote(stripTags(html));
   }
   return d;
 }
 /* A small marker on the slide itself when it carries notes, parked in
    whichever corner is free of content.                                   */
+let noteOrigin = null;                     // rect of whatever box you typed in
+const captureOrigin = el => { try { noteOrigin = el.getBoundingClientRect(); } catch (e) {} };
+
+/* The note leaves the box you typed it in and lands on the marker. */
+function flyNote(text) {
+  const badge = $("#noteBadge");
+  if (!badge || badge.hidden || reduceMotion()) { pop(badge); return; }
+  const to = badge.getBoundingClientRect();
+  const from = noteOrigin && noteOrigin.width ? noteOrigin : to;
+  const ghost = document.createElement("div");
+  ghost.className = "note-fly";
+  ghost.textContent = (text || "note").slice(0, 60);
+  ghost.style.left = from.left + "px";
+  ghost.style.top = from.top + "px";
+  ghost.style.width = Math.min(from.width || 220, 280) + "px";
+  document.body.appendChild(ghost);
+  const g = ghost.getBoundingClientRect();
+  const dx = to.left + to.width / 2 - (g.left + g.width / 2);
+  const dy = to.top + to.height / 2 - (g.top + g.height / 2);
+  const anim = ghost.animate(
+    [{ transform: "translate(0,0) scale(1)", opacity: 1 },
+     { transform: `translate(${dx * 0.55}px,${dy * 0.55}px) scale(.66)`, opacity: .95, offset: .6 },
+     { transform: `translate(${dx}px,${dy}px) scale(.18)`, opacity: 0 }],
+    { duration: 620, easing: "cubic-bezier(.4,.05,.25,1)" });
+  anim.onfinish = () => { ghost.remove(); pop(badge); };
+  setTimeout(() => { if (ghost.isConnected) { ghost.remove(); pop(badge); } }, 900);
+}
+function pop(badge) {
+  if (!badge || badge.hidden) return;
+  badge.classList.remove("pop");
+  void badge.offsetWidth;                  // restart the animation
+  badge.classList.add("pop");
+}
+
 function renderNoteBadge() {
   const badge = $("#noteBadge"); if (!badge || !D) return;
   const n = ((store.data.notes || {})[cur] || []).length;
@@ -711,6 +746,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (items[palSel] && items[palSel].label.startsWith("/")) { inp.value = items[palSel].label.split(" <")[0] + " "; renderPal(); } }
     else if (e.key === "Enter") { e.preventDefault();
       const v = inp.value;
+      captureOrigin($(".pal-box"));
       if (palMode === "list") { if (items[palSel]) { closePalette(); items[palSel].run(); } return; }
       const routed = /^\/(go|fig|table)\s/.test(v) || !v.startsWith("/");
       if (items[palSel] && routed && items.length) { closePalette(); items[palSel].run(); }
@@ -720,10 +756,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const cmd = $("#cmd");
   cmd.addEventListener("keydown", e => {
-    if (e.key === "Enter") { runCommand(cmd.value); cmd.value = ""; }
+    if (e.key === "Enter") { captureOrigin(cmd); runCommand(cmd.value); cmd.value = ""; }
     if (e.key === "Escape") cmd.blur();
   });
-  $("#send").onclick = () => { runCommand(cmd.value); cmd.value = ""; };
+  $("#send").onclick = () => { captureOrigin(cmd); runCommand(cmd.value); cmd.value = ""; };
 
   // drag and drop a deck anywhere
   ["dragenter", "dragover"].forEach(t => document.addEventListener(t, e => {
