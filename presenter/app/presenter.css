@@ -74,20 +74,28 @@ body.editing [contenteditable="true"]:hover{background:rgba(201,162,39,.08)}
 #answer[hidden],#noteBadge[hidden]{display:none!important}
 
 /* note marker, parked in whichever corner of the slide is free */
-#noteBadge{position:absolute;z-index:4;display:flex;align-items:center;gap:.4em;
-  background:#fdf6e0;border:1.5px solid #dcc586;color:#6f5210;border-radius:999px;
-  padding:.34em .8em;font-size:clamp(12px,1.75cqw,24px);line-height:1;cursor:pointer;
-  box-shadow:0 2px 7px rgba(0,0,0,.16);font-family:system-ui,sans-serif;
-  transition:background .15s,transform .15s}
-#noteBadge:hover{background:#f7e9c4;transform:scale(1.06)}
-#noteBadge .ico{font-size:1.1em}
-#noteBadge .n{font-weight:700}
+#noteBadge{position:absolute;z-index:4;display:flex;align-items:center;gap:.34em;
+  background:rgba(248,248,246,.9);border:1px solid rgba(23,23,20,.13);color:#5b5b55;
+  border-radius:999px;padding:.3em .72em .3em .58em;
+  font-size:16px;line-height:1;cursor:pointer;   /* placeBadge() rescales to the slide */
+  -webkit-backdrop-filter:saturate(1.4) blur(6px);backdrop-filter:saturate(1.4) blur(6px);
+  box-shadow:0 1px 2px rgba(23,23,20,.07),0 4px 12px rgba(23,23,20,.09);
+  font-family:system-ui,sans-serif;
+  transition:color .15s,border-color .15s,background .15s,transform .15s,box-shadow .15s}
+#noteBadge:hover{background:rgba(255,255,255,.97);color:#2f2f2b;border-color:rgba(23,23,20,.26);
+  transform:translateY(-1px) scale(1.05);
+  box-shadow:0 2px 4px rgba(23,23,20,.09),0 7px 18px rgba(23,23,20,.13)}
+#noteBadge .ico{width:1.34em;height:1.34em;display:block;opacity:.72}
+#noteBadge:hover .ico{opacity:1}
+#noteBadge .n{font-size:.92em;font-weight:600;font-variant-numeric:tabular-nums;
+  letter-spacing:.01em;opacity:.88}
+#noteBadge:hover .n{opacity:1}
 #noteBadge.pop{animation:badgePop .4s cubic-bezier(.3,1.4,.5,1)}
 @keyframes badgePop{0%{transform:scale(.7)}55%{transform:scale(1.3)}100%{transform:scale(1)}}
 
 /* 2. a note flies from where you typed it to the marker */
-.note-fly{position:fixed;z-index:70;pointer-events:none;background:#fdf6e0;
-  border:1.5px solid #dcc586;color:#6f5210;border-radius:10px;padding:7px 11px;
+.note-fly{position:fixed;z-index:70;pointer-events:none;background:#f8f8f6;
+  border:1px solid rgba(23,23,20,.16);color:#4a4a45;border-radius:10px;padding:7px 11px;
   font:13px/1.35 system-ui,sans-serif;max-width:280px;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;box-shadow:0 8px 22px rgba(0,0,0,.2)}
 
@@ -98,6 +106,25 @@ body.editing [contenteditable="true"]:hover{background:rgba(201,162,39,.08)}
 #timer.running{border-color:#bcd3bc;background:#f2f8f2;color:#1d5c2a}
 #timer.warn{border-color:#e3c98a;background:#fdf6e6;color:#8a6412}
 #timer.over{border-color:#e0a9a9;background:#fdeeee;color:#a4262c;font-weight:600}
+
+#counter{white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* stopwatch for the slide you are on */
+#slideTime{font-variant-numeric:tabular-nums;font-size:12px;color:#8a8a83;min-width:44px;
+  letter-spacing:.2px;user-select:none}
+#slideTime.running{color:#3d7a4a}
+#slideTime.running::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+  background:#4f9a60;margin-right:5px;vertical-align:middle;animation:tick 2s ease-in-out infinite}
+@keyframes tick{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* /times breakdown in the pane */
+table.times{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;
+  font-variant-numeric:tabular-nums}
+table.times td{padding:2px 6px 2px 0;vertical-align:middle}
+table.times td:first-child{color:#999;text-align:right;width:2.2em}
+table.times td.t{text-align:right;white-space:nowrap;color:#444}
+table.times td.b{width:34%}
+table.times td.b i{display:block;height:5px;border-radius:3px;background:#c8d2e8;min-width:2px}
 
 /* answer card, used when the pane is hidden */
 #answer{position:fixed;right:20px;bottom:20px;width:min(420px,44vw);z-index:45;
@@ -152,7 +179,9 @@ body.editing [contenteditable="true"]:hover{background:rgba(201,162,39,.08)}
   border-bottom:1px solid var(--line)}
 #palList{max-height:50vh;overflow:auto}
 .pal-item{padding:10px 18px;cursor:pointer;font-size:14px;border-bottom:1px solid #f1f1ef}
-.pal-item .sub{font-size:12px;color:#888;margin-top:2px}
+/* own class name, and its own ::before, so a deck's styles can't decorate it */
+.pal-item .pal-sub{font-size:12px;color:#888;margin-top:2px;padding:0}
+.pal-item .pal-sub::before,.pal-item>div::before{content:none}
 .pal-item.sel{background:#eef0f7}
 .pal-hint{padding:8px 18px;font-size:11.5px;color:#999;border-top:1px solid var(--line);background:#fafaf8}
 

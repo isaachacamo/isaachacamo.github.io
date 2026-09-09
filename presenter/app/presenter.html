@@ -26,6 +26,7 @@
       </p>
       <p class="keys">
         <span class="kbd">/</span> commands ·
+        <span class="kbd">L</span> slide list ·
         <span class="kbd">E</span> edit ·
         <span class="kbd">H</span> pane ·
         <span class="kbd">B</span> back ·
@@ -42,6 +43,7 @@
     <div class="bar">
       <button id="prev" title="Previous (←)">&#8592;</button>
       <span id="counter"></span>
+      <span id="slideTime" title="Time on this slide"></span>
       <button id="next" title="Next (→)">&#8594;</button>
       <button id="openPal" title="Command palette (⌘K or /)">&#8984;K command</button>
       <button id="editBtn" title="Toggle editing (E)">Editing: off</button>
@@ -49,6 +51,7 @@
       <span class="grow"></span>
       <span id="deckName"></span>
       <span><span class="kbd">/</span> command
+        <span class="kbd">L</span> slides
         <span class="kbd">E</span> edit
         <span class="kbd">H</span> pane
         <span class="kbd">B</span> back
@@ -75,7 +78,7 @@
   <div class="pal-box">
     <input id="palInput" autocomplete="off" spellcheck="false">
     <div id="palList"></div>
-    <div class="pal-hint">&#8593;&#8595; choose &middot; Tab complete &middot; Enter run &middot; Esc close &middot; /help for everything</div>
+    <div class="pal-hint">&#8593;&#8595; choose &middot; Tab complete &middot; Enter take the highlighted one &middot; Esc close &middot; /help for everything</div>
   </div>
 </div>
 

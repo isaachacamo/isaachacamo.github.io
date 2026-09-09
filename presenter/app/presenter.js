@@ -123,6 +123,7 @@ function mountDeck(deck) {
     document.body.appendChild(el);
   });
 
+  SlideClock.stop();               // bank the outgoing deck's time before we swap stores
   store = {
     key: "prez:" + deck.id,
     data: LS.get("prez:" + deck.id, { notes: {}, tags: {}, edits: {}, paneHidden: false }),
@@ -130,6 +131,7 @@ function mountDeck(deck) {
   markEditable();
   restoreEdits();
   Timer.load();
+  SlideClock.load();
   chat = [];
   paneHidden = !!store.data.paneHidden;
   document.body.classList.toggle("pane-hidden", paneHidden);
@@ -192,16 +194,18 @@ const save = () => LS.set(store.key, store.data);
 /* ------------------------------------------------------------------ timer
  * Set it once at the start of the talk; it counts down and keeps going
  * (in red, with a +) once you are over. Survives a reload mid-talk.        */
+const clock = s => {
+  const over = s < 0; s = Math.abs(Math.round(s));
+  const h = (s / 3600) | 0, m = ((s % 3600) / 60) | 0, ss = s % 60;
+  const mm = h ? String(m).padStart(2, "0") : String(m);
+  return (over ? "+" : "") + (h ? h + ":" : "") + mm + ":" + String(ss).padStart(2, "0");
+};
+
 const Timer = (() => {
   const DEFAULT = 90 * 60;                       // 1.5 hours
   let total = DEFAULT, left = DEFAULT, running = false, since = 0, tick = null;
 
-  const fmt = s => {
-    const over = s < 0; s = Math.abs(Math.round(s));
-    const h = (s / 3600) | 0, m = ((s % 3600) / 60) | 0, ss = s % 60;
-    const mm = h ? String(m).padStart(2, "0") : String(m);
-    return (over ? "+" : "") + (h ? h + ":" : "") + mm + ":" + String(ss).padStart(2, "0");
-  };
+  const fmt = clock;
   const remaining = () => running ? left - (Date.now() - since) / 1000 : left;
 
   function render() {
@@ -236,6 +240,57 @@ const Timer = (() => {
     toggle() { running ? this.pause() : this.start(); },
     reset() { left = total; running = false; since = 0; persist(); loop(); toast("Timer reset"); },
     render, remaining,
+  };
+})();
+
+/* ------------------------------------------------------------------ per-slide clock
+ * Each slide has its own stopwatch. It runs while the slide is up, stops when
+ * you leave, and picks up where it left off if you come back. Stored per deck,
+ * so the numbers survive a reload and tell you afterwards where the time went. */
+const SlideClock = (() => {
+  let idx = null, since = 0, tick = null, saved = 0;
+  const table = () => (store.data.slideTime = store.data.slideTime || {});
+  const live = () => (idx !== null && since ? (Date.now() - since) / 1000 : 0);
+
+  /* move the seconds run so far into the store; keep counting unless told to stop */
+  function bank(keepRunning) {
+    if (idx !== null && since) {
+      const t = table();
+      t[idx] = (t[idx] || 0) + (Date.now() - since) / 1000;
+    }
+    since = keepRunning ? Date.now() : 0;
+    saved = Date.now();
+  }
+  function render() {
+    const el = $("#slideTime"); if (!el || !D) return;
+    if (idx === null) { el.textContent = ""; el.classList.remove("running"); return; }
+    el.textContent = clock((table()[idx] || 0) + live());
+    el.classList.toggle("running", !!since);
+    el.title = `Time on slide ${idx + 1} · /times for the whole breakdown`;
+    // a heartbeat, so a crash or a closed laptop mid-talk loses at most ~20s
+    if (since && Date.now() - saved > 20000) { bank(true); save(); }
+  }
+  function loop() { clearInterval(tick); if (since) tick = setInterval(render, 500); render(); }
+
+  return {
+    /* called on every slide change: close the old slide's books, open the new one */
+    enter(i) {
+      if (i === idx && since) return;
+      bank(false);
+      idx = i; since = Date.now(); saved = Date.now();
+      save(); loop();
+    },
+    pause() { if (!since) return; bank(false); save(); loop(); },
+    resume() { if (idx === null || since) return; since = Date.now(); saved = Date.now(); loop(); },
+    stop() {
+      if (!store) { idx = null; since = 0; clearInterval(tick); return; }
+      bank(false); save(); idx = null; clearInterval(tick); render();
+    },
+    load() { idx = null; since = 0; clearInterval(tick); },
+    total: i => (table()[i] || 0) + (i === idx ? live() : 0),
+    grand() { return D ? D.slides.reduce((a, _, i) => a + this.total(i), 0) : 0; },
+    reset() { store.data.slideTime = {}; if (idx !== null) since = Date.now(); saved = Date.now(); save(); render(); },
+    render,
   };
 })();
 
@@ -278,6 +333,7 @@ function show(i, { push = true, step = 0, dir } = {}) {
   n.dataset.step = step === "last" ? n.dataset.frags : 0;
   applySteps(n);
   $("#counter").textContent = `${cur + 1} / ${D.slides.length}`;
+  SlideClock.enter(cur);
   renderPane();
 }
 function next() {
@@ -376,12 +432,21 @@ function pop(badge) {
   badge.classList.add("pop");
 }
 
+/* a quiet stroked speech bubble — reads at any size, takes its colour from the pill */
+const NOTE_ICON =
+  '<svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">'
+  + '<path d="M20.5 11.9c0 3.9-3.8 7.05-8.5 7.05-.87 0-1.72-.11-2.5-.31L4.6 20.4l1.36-3.3'
+  + 'C4.4 15.82 3.5 13.96 3.5 11.9 3.5 8 7.3 4.85 12 4.85s8.5 3.15 8.5 7.05Z"'
+  + ' stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'
+  + '<path d="M8.5 10.6h7M8.5 13.6h4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+  + "</svg>";
+
 function renderNoteBadge() {
   const badge = $("#noteBadge"); if (!badge || !D) return;
   const n = ((store.data.notes || {})[cur] || []).length;
   badge.hidden = !n;
   if (!n) return;
-  badge.innerHTML = `<span class="ico">✎</span><span class="n">${n}</span>`;
+  badge.innerHTML = NOTE_ICON + `<span class="n">${n}</span>`;
   badge.title = `${n} note${n > 1 ? "s" : ""} on this slide — click to open the pane`;
   placeBadge(badge);
 }
@@ -389,6 +454,8 @@ function placeBadge(badge) {
   const slide = D.slides[cur].node;
   const r = slide.getBoundingClientRect();
   if (!r.width) return;
+  // scale with the slide, measured rather than left to cqw (Safari resolves it as 0 here)
+  badge.style.fontSize = Math.max(12, Math.min(24, r.width * 0.0175)) + "px";
   const pad = r.width * 0.012, w = r.width * 0.075, h = r.height * 0.075;
   // only leaf elements: containers span the whole slide and would look "occupied"
   const boxes = [...slide.querySelectorAll("*")]
@@ -551,6 +618,7 @@ const COMMANDS = [
       if (!h.length) return toast(`No slide matches “${a}”`);
       h.length === 1 ? show(h[0]) : pickSlide(h);
     } },
+  { name: "slides", args: "", help: "List every slide and jump to one (L)", run: () => slideList() },
   { name: "back", args: "", help: "Return to the slide you jumped from", run: back },
   { name: "fig", args: "<number | words>", help: "Open a figure", run: a => openFigure(figByRef("figure", a)) },
   { name: "table", args: "<number | words>", help: "Open a table", run: a => openFigure(figByRef("table", a)) },
@@ -611,6 +679,21 @@ const COMMANDS = [
       const m = parseFloat(t);
       if (isFinite(m) && m > 0) Timer.set(m); else toast("Try /timer 45");
     } },
+  { name: "times", args: "[reset]", help: "Time spent on each slide", run: a => {
+      if (a.trim().toLowerCase() === "reset") { SlideClock.reset(); return toast("Slide times cleared"); }
+      const rows = D.slides.map((_, i) => ({ i, s: SlideClock.total(i) })).filter(r => r.s >= 1);
+      if (!rows.length) return toast("No time recorded yet");
+      rows.sort((a, b) => b.s - a.s);
+      const grand = SlideClock.grand();
+      addMsg("data",
+        `<b>Time per slide</b> — ${clock(grand)} over ${rows.length} slide${rows.length > 1 ? "s" : ""}`
+        + '<table class="times">'
+        + rows.map(r => `<tr><td>${r.i + 1}</td><td>${esc(meta(r.i).title)}</td>`
+            + `<td class="t">${clock(r.s)}</td>`
+            + `<td class="b"><i style="width:${Math.round(100 * r.s / rows[0].s)}%"></i></td></tr>`).join("")
+        + "</table>", false);
+      if (paneHidden) togglePane(false);
+    } },
   { name: "pane", args: "", help: "Show / hide the side pane", run: () => togglePane() },
   { name: "open", args: "", help: "Open a different deck", run: () => $("#file").click() },
   { name: "help", args: "", help: "List commands", run: () => openPalette("",
@@ -624,21 +707,30 @@ function runCommand(text) {
   const c = COMMANDS.find(c => c.name === m[1].toLowerCase());
   c ? c.run(m[2]) : toast("Unknown command /" + m[1]);
 }
-const pickSlide = hits => openPalette("", hits.map(i => ({
-  label: `Slide ${i + 1} — ${meta(i).title}`,
-  sub: tagsOf(i).map(t => "#" + t).join(" "), run: () => show(i) })));
+const slideItem = i => {
+  const bits = [tagsOf(i).map(t => "#" + t).join(" "),
+                SlideClock.total(i) >= 1 ? clock(SlideClock.total(i)) : "",
+                ((store.data.notes || {})[i] || []).length ? "✎" : "",
+                i === cur ? "← you are here" : ""].filter(Boolean);
+  return { label: `${i + 1}. ${meta(i).title}`, sub: bits.join(" · "), run: () => show(i) };
+};
+const pickSlide = hits => openPalette("", hits.map(slideItem));
+
+/* Every slide at once — type to filter, ↑↓ to move, Enter to jump. */
+const slideList = () =>
+  openPalette("", D.slides.map((_, i) => slideItem(i)), { sel: cur, placeholder: "Go to slide…" });
 
 /* ------------------------------------------------------------------ palette */
 let palItems = [], palSel = 0, palMode = "cmd";
-function openPalette(text = "", items = null) {
+function openPalette(text = "", items = null, opts = {}) {
   const pal = $("#palette");
   pal.classList.add("open");
   const inp = $("#palInput");
   inp.value = text;
   palMode = items ? "list" : "cmd";
   palItems = items || [];
-  inp.placeholder = items ? "Choose…" : "Command (/go 12, /fig 3, /ask …) or a note";
-  palSel = 0; renderPal(); inp.focus(); inp.setSelectionRange(text.length, text.length);
+  inp.placeholder = opts.placeholder || (items ? "Choose…" : "Command (/go 12, /fig 3, /ask …) or a note");
+  palSel = opts.sel || 0; renderPal(); inp.focus(); inp.setSelectionRange(text.length, text.length);
 }
 const closePalette = () => { $("#palette").classList.remove("open"); $("#palInput").blur(); };
 function suggest(text) {
@@ -663,7 +755,9 @@ function suggest(text) {
   }
   return COMMANDS.filter(c => c.name.startsWith(name)).map(c => ({
     label: `/${c.name} ${c.args}`, sub: c.help,
-    run: () => { if (c.args) openPalette("/" + c.name + " "); else { closePalette(); c.run(""); } } }));
+    // an argument in [brackets] is optional, so Enter can just run the command
+    run: () => { if (c.args && !c.args.startsWith("[")) openPalette("/" + c.name + " ");
+                 else { closePalette(); c.run(""); } } }));
 }
 function renderPal() {
   const list = $("#palList"), items = suggest($("#palInput").value);
@@ -671,9 +765,10 @@ function renderPal() {
   items.forEach((it, k) => {
     const d = document.createElement("div");
     d.className = "pal-item" + (k === palSel ? " sel" : "");
-    d.innerHTML = `<div>${esc(it.label)}</div>${it.sub ? `<div class="sub">${esc(it.sub)}</div>` : ""}`;
+    d.innerHTML = `<div>${esc(it.label)}</div>${it.sub ? `<div class="pal-sub">${esc(it.sub)}</div>` : ""}`;
     d.onmousedown = e => { e.preventDefault(); closePalette(); it.run(); };
     list.appendChild(d);
+    if (k === palSel) requestAnimationFrame(() => d.scrollIntoView({ block: "nearest" }));
   });
   list._items = items;
 }
@@ -747,10 +842,10 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (e.key === "Enter") { e.preventDefault();
       const v = inp.value;
       captureOrigin($(".pal-box"));
-      if (palMode === "list") { if (items[palSel]) { closePalette(); items[palSel].run(); } return; }
-      const routed = /^\/(go|fig|table)\s/.test(v) || !v.startsWith("/");
-      if (items[palSel] && routed && items.length) { closePalette(); items[palSel].run(); }
-      else { closePalette(); runCommand(v); } }
+      // Enter takes the highlighted suggestion (the first one unless you moved);
+      // a command that needs an argument reopens the box prefilled with it.
+      if (items[palSel]) { closePalette(); items[palSel].run(); return; }
+      closePalette(); if (palMode !== "list") runCommand(v); }
     else if (e.key === "Escape") { e.preventDefault(); closePalette(); }
   });
 
@@ -814,6 +909,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (e.key === "/") { e.preventDefault(); openPalette("/"); return; }
     const k = e.key.toLowerCase();
+    if (k === "l") { e.preventDefault(); return slideList(); }   // else the "l" lands in the box
     if (k === "h") return togglePane();
     if (k === "e") return setEdit(!editMode);
     if (k === "b") return back();
@@ -827,6 +923,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   window.addEventListener("resize", () => { if (D) renderNoteBadge(); });
+  // don't charge a slide for time when the deck isn't on screen
+  document.addEventListener("visibilitychange", () =>
+    document.hidden ? SlideClock.pause() : SlideClock.resume());
+  window.addEventListener("pagehide", () => SlideClock.pause());
   boot();
 });
 
@@ -841,6 +941,6 @@ function toast(msg) {
 }
 
 window.PREZ = { show: i => show(i), next, prev, back, openPalette, closePalette, runCommand,
-                openFigure, togglePane, setEdit, loadFile, Timer, askClaude,
+                openFigure, togglePane, setEdit, loadFile, Timer, SlideClock, slideList, askClaude,
                 get deck() { return D; }, get chat() { return chat; } };
 })();
