@@ -1,0 +1,4 @@
+.DS_Store
+presenter/**/*.md
+presenter/decks/
+presenter/server/.env
