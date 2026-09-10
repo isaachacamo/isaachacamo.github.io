@@ -365,6 +365,7 @@ function show(i, { push = true, step = 0, dir } = {}) {
   const fromIdx = cur;
   if (push && i !== cur) history.push(cur);
   cur = (i + D.slides.length) % D.slides.length;
+  linkIdx = -1;
   hideAsk();
   const far = Math.abs(cur - fromIdx) > 2 && !reduceMotion();
   if (far) {
@@ -601,6 +602,23 @@ function peekSlide(n, opts = {}) {
                   { duration: 520, easing: "cubic-bezier(.2,.8,.25,1)" });
     });
   }
+}
+/* K walks the slide's buttons in order: each press opens the next one's
+   popup (or jumps to it); after the last, the popup closes. */
+let linkIdx = -1;
+function cycleLink() {
+  const links = [...D.slides[cur].node.querySelectorAll("[data-peek],[data-goto]")];
+  if (!links.length) return toast("No links on this slide");
+  linkIdx += 1;
+  if (linkIdx >= links.length) { linkIdx = -1; closeLightbox(); return toast("Back to the slide"); }
+  const a = links[linkIdx], n = +(a.dataset.peek || a.dataset.goto);
+  if (!(n >= 1 && n <= D.slides.length)) return;
+  if (a.dataset.peek) {
+    closeLightbox();
+    peekSlide(n - 1, { play: a.hasAttribute("data-peek-play"),
+                       from: a.hasAttribute("data-peek-zoom") ? a.getBoundingClientRect() : null });
+    toast(`Link ${linkIdx + 1} of ${links.length} · K for the next`);
+  } else show(n - 1);
 }
 const closeLightbox = () => {
   $("#lightbox").classList.remove("open", "zoom", "node");
@@ -1032,6 +1050,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if (typing || $("#palette").classList.contains("open") || !D) return;
+    const k = e.key.toLowerCase();
     if ($("#lightbox").classList.contains("open")) {
       const peek = $("#lbNode .slide");
       const stepPeek = d => {                            // a popped-up slide steps like the real one
@@ -1043,10 +1062,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); peek ? stepPeek(1) : stepFigure(1); }
       if (e.key === "ArrowLeft") { e.preventDefault(); peek ? stepPeek(-1) : stepFigure(-1); }
       if (e.key.toLowerCase() === "z") $("#lightbox").classList.toggle("zoom");
+      if (e.key.toLowerCase() === "k") { e.preventDefault(); cycleLink(); }
       return;
     }
+    if (k === "k") { e.preventDefault(); return cycleLink(); }
     if (e.key === "/") { e.preventDefault(); openPalette("/"); return; }
-    const k = e.key.toLowerCase();
     if (k === "l") { e.preventDefault(); return slideList(); }   // else the "l" lands in the box
     if (k === "h") return togglePane();
     if (k === "e") return setEdit(!editMode);
