@@ -589,6 +589,18 @@ function peekSlide(n, opts = {}) {
   const lb = $("#lightbox");
   lb.classList.remove("zoom"); lb.classList.add("open", "node");
   lbIdx = -1;
+  if (opts.from && !reduceMotion()) {
+    // grow out of the element that asked for it, so the popup reads as a zoom
+    const box = $("#lightbox .lb-box"), f = opts.from;
+    requestAnimationFrame(() => {
+      const b = box.getBoundingClientRect();
+      const dx = (f.left + f.width / 2) - (b.left + b.width / 2);
+      const dy = (f.top + f.height / 2) - (b.top + b.height / 2);
+      box.animate([{ transform: `translate(${dx}px,${dy}px) scale(${f.width / b.width},${f.height / b.height})`, opacity: .35 },
+                   { transform: "none", opacity: 1 }],
+                  { duration: 520, easing: "cubic-bezier(.2,.8,.25,1)" });
+    });
+  }
 }
 const closeLightbox = () => {
   $("#lightbox").classList.remove("open", "zoom", "node");
@@ -924,7 +936,9 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const n = +(a.dataset.peek || a.dataset.goto);
     if (!(n >= 1 && n <= D.slides.length)) return;
-    a.dataset.peek ? peekSlide(n - 1, { play: a.hasAttribute("data-peek-play") }) : show(n - 1);
+    a.dataset.peek ? peekSlide(n - 1, { play: a.hasAttribute("data-peek-play"),
+                                        from: a.hasAttribute("data-peek-zoom") ? a.getBoundingClientRect() : null })
+                   : show(n - 1);
   });
   $("#ansClose").onclick = closeAnswer;
   const ansIn = $("#ansInput");
