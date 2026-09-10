@@ -289,7 +289,16 @@ const SlideClock = (() => {
       if (!store) { idx = null; since = 0; clearInterval(tick); return; }
       bank(false); save(); idx = null; clearInterval(tick); render();
     },
-    load() { idx = null; since = 0; clearInterval(tick); },
+    /* a deck opened afresh starts its slide times from zero; the previous
+       run's times are kept once, for /times last */
+    load() {
+      idx = null; since = 0; clearInterval(tick);
+      if (store && store.data.slideTime && Object.keys(store.data.slideTime).length) {
+        store.data.slideTimeLast = store.data.slideTime;
+      }
+      if (store) { store.data.slideTime = {}; save(); }
+    },
+    last: i => (store.data.slideTimeLast || {})[i] || 0,
     total: i => (table()[i] || 0) + (i === idx ? live() : 0),
     grand() { return D ? D.slides.reduce((a, _, i) => a + this.total(i), 0) : 0; },
     reset() { store.data.slideTime = {}; if (idx !== null) since = Date.now(); saved = Date.now(); save(); render(); },
@@ -550,15 +559,20 @@ function openFigure(f) {
 }
 /* Show another slide over this one without leaving it — for a deck link that
    should feel like opening an exhibit rather than jumping away. */
-function peekSlide(n) {
+function peekSlide(n, opts = {}) {
   const s = D.slides[n]; if (!s) return toast("No such slide");
   const holder = $("#lbNode");
   holder.innerHTML = "";
   const clone = s.node.cloneNode(true);
   clone.classList.add("peek");
   clone.classList.remove("active", "leaveUp", "leaveDown", "enterUp", "enterDown");
-  clone.dataset.step = clone.dataset.frags || 0;      // fully revealed
-  clone.querySelectorAll("[data-in]").forEach(el => el.classList.add("on"));
+  if (opts.play && +clone.dataset.frags) {
+    // played from its first step: ←/→ step it inside the popup
+    clone.dataset.step = 0; applySteps(clone);
+  } else {
+    clone.dataset.step = clone.dataset.frags || 0;      // fully revealed
+    clone.querySelectorAll("[data-in]").forEach(el => el.classList.add("on"));
+  }
   clone.querySelectorAll("[data-goto],[data-peek],.askbtn,#noteBadge").forEach(el => el.remove());
   holder.appendChild(clone);
   $("#lbCap").innerHTML = `<b>Slide ${n + 1}.</b> ${esc(meta(n).title)}`
@@ -754,12 +768,14 @@ const COMMANDS = [
       const m = parseFloat(t);
       if (isFinite(m) && m > 0) Timer.set(m); else toast("Try /timer 45");
     } },
-  { name: "times", args: "[reset]", help: "Time spent on each slide", run: a => {
-      if (a.trim().toLowerCase() === "reset") { SlideClock.reset(); return toast("Slide times cleared"); }
-      const rows = D.slides.map((_, i) => ({ i, s: SlideClock.total(i) })).filter(r => r.s >= 1);
-      if (!rows.length) return toast("No time recorded yet");
+  { name: "times", args: "[reset|last]", help: "Time spent on each slide (this run; 'last' for the previous one)", run: a => {
+      const arg = a.trim().toLowerCase();
+      if (arg === "reset") { SlideClock.reset(); return toast("Slide times cleared"); }
+      const prev = arg === "last";
+      const rows = D.slides.map((_, i) => ({ i, s: prev ? SlideClock.last(i) : SlideClock.total(i) })).filter(r => r.s >= 1);
+      if (!rows.length) return toast(prev ? "No previous run recorded" : "No time recorded yet");
       rows.sort((a, b) => b.s - a.s);
-      const grand = SlideClock.grand();
+      const grand = prev ? rows.reduce((t, r) => t + r.s, 0) : SlideClock.grand();
       addMsg("data",
         `<b>Time per slide</b> — ${clock(grand)} over ${rows.length} slide${rows.length > 1 ? "s" : ""}`
         + '<table class="times">'
@@ -899,7 +915,7 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const n = +(a.dataset.peek || a.dataset.goto);
     if (!(n >= 1 && n <= D.slides.length)) return;
-    a.dataset.peek ? peekSlide(n - 1) : show(n - 1);
+    a.dataset.peek ? peekSlide(n - 1, { play: a.hasAttribute("data-peek-play") }) : show(n - 1);
   });
   $("#ansClose").onclick = closeAnswer;
   const ansIn = $("#ansInput");
@@ -994,8 +1010,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (typing || $("#palette").classList.contains("open") || !D) return;
     if ($("#lightbox").classList.contains("open")) {
-      if (e.key === "ArrowRight") { e.preventDefault(); stepFigure(1); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); stepFigure(-1); }
+      const peek = $("#lbNode .slide");
+      const stepPeek = d => {                            // a popped-up slide steps like the real one
+        const st = +peek.dataset.step, max = +peek.dataset.frags || 0, to = st + d;
+        if (to < 0 || to > max) return;
+        peek.dataset.step = to; applySteps(peek);
+      };
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); peek ? stepPeek(1) : stepFigure(1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); peek ? stepPeek(-1) : stepFigure(-1); }
       if (e.key.toLowerCase() === "z") $("#lightbox").classList.toggle("zoom");
       return;
     }
@@ -1050,6 +1072,6 @@ function toast(msg) {
 }
 
 window.PREZ = { show: i => show(i), next, prev, back, openPalette, closePalette, runCommand,
-                openFigure, togglePane, setEdit, loadFile, Timer, SlideClock, slideList, askClaude,
+                openFigure, peekSlide, togglePane, setEdit, loadFile, Timer, SlideClock, slideList, askClaude,
                 get deck() { return D; }, get chat() { return chat; } };
 })();
