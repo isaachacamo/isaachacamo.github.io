@@ -26,10 +26,10 @@
       </p>
       <p class="keys">
         <span class="kbd">/</span> commands ·
+        <span class="kbd">N</span>/<span class="kbd">B</span> next / previous slide ·
         <span class="kbd">L</span> slide list ·
         <span class="kbd">E</span> edit ·
         <span class="kbd">H</span> pane ·
-        <span class="kbd">B</span> back ·
         <span class="kbd">F</span> full screen ·
         <span class="kbd">O</span> open another deck
       </p>
@@ -45,16 +45,15 @@
       <span id="counter"></span>
       <span id="slideTime" title="Time on this slide"></span>
       <button id="next" title="Next (→)">&#8594;</button>
-      <button id="openPal" title="Command palette (⌘K or /)">&#8984;K command</button>
       <button id="editBtn" title="Toggle editing (E)">Editing: off</button>
       <span id="timer" title="Click to start">1:30:00</span>
       <span class="grow"></span>
       <span id="deckName"></span>
       <span><span class="kbd">/</span> command
-        <span class="kbd">L</span> slides
+        <span class="kbd">N</span>/<span class="kbd">B</span> slide
+        <span class="kbd">L</span> list
         <span class="kbd">E</span> edit
         <span class="kbd">H</span> pane
-        <span class="kbd">B</span> back
         <span class="kbd">T</span> timer
         <span class="kbd">F</span> full</span>
       <button id="hidePane" title="Show / hide the pane (H)">Hide pane</button>
@@ -87,7 +86,7 @@
   <div class="lb-nav lb-prev">&#8249;</div>
   <div class="lb-nav lb-next">&#8250;</div>
   <div class="lb-box">
-    <div class="lb-fig"><img id="lbImg" alt=""></div>
+    <div class="lb-fig"><img id="lbImg" alt=""><div id="lbNode"></div></div>
     <div id="lbCap"></div>
   </div>
 </div>

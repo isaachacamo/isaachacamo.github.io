@@ -78,6 +78,7 @@ function parseDeck(htmlText, name) {
     id: meta.id || slugify(meta.title || name || (slides[0] && slides[0].title) || "deck"),
     title: meta.title || (slides[0] && slides[0].title) || name || "Deck",
     size, api: meta.api || null,
+    minutes: +meta.minutes > 0 ? +meta.minutes : null,   // the talk's own slot length
     figures: (meta.figures || []).map((f, k) => ({
       kind: f.kind || "figure", num: f.num ?? k + 1, title: f.title || "",
       src: f.src, page: f.page, source: f.source || "paper",
@@ -93,6 +94,7 @@ const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/
 /* ------------------------------------------------------------------ mounting */
 let D = null;                     // the live deck
 let cur = 0, history = [], editMode = false, paneHidden = false, store = null;
+let hideAsk = () => {};             // set once the ask button is wired
 
 function mountDeck(deck) {
   D = deck;
@@ -226,7 +228,8 @@ const Timer = (() => {
   return {
     load() {
       const t = (store && store.data.timer) || null;
-      if (t) ({ total, left, running, since } = t); else { total = left = DEFAULT; running = false; }
+      const slot = (D && D.minutes ? D.minutes * 60 : 0) || DEFAULT;
+      if (t) ({ total, left, running, since } = t); else { total = left = slot; running = false; }
       loop();
     },
     set(minutes, andStart = true) {
@@ -323,12 +326,47 @@ function roll(fromIdx, toIdx, dir) {
   }, 500);
 }
 
+/* A long jump: the slides in between pass by as a quick, soft riffle — three
+   frames, cross-faded — and the target settles in with a short fade rather
+   than a roll, so there is no lurch at the end. */
+let riffleT = null;
+function riffle(fromIdx, toIdx, done) {
+  const span = toIdx - fromIdx, n = Math.min(3, Math.abs(span) - 1);
+  const steps = Array.from({ length: n }, (_, k) => fromIdx + Math.round(span * (k + 1) / (n + 1)));
+  clearTimeout(riffleT);
+  D.slides.forEach(s => s.node.classList.remove("leaveUp", "leaveDown", "enterUp", "enterDown", "flick"));
+  document.body.classList.add("riffling");
+  let k = 0, prev = D.slides[fromIdx].node;
+  const tick = () => {
+    prev.classList.remove("active", "flick");
+    if (k < steps.length) {
+      const n = D.slides[steps[k]].node;
+      n.classList.add("active", "flick");
+      prev = n; k++; riffleT = setTimeout(tick, 95);
+    } else {
+      document.body.classList.remove("riffling");
+      done();
+    }
+  };
+  tick();
+}
+
 function show(i, { push = true, step = 0, dir } = {}) {
   if (!D) return;
   const fromIdx = cur;
   if (push && i !== cur) history.push(cur);
   cur = (i + D.slides.length) % D.slides.length;
-  roll(fromIdx, cur, dir !== undefined ? dir : Math.sign(cur - fromIdx));
+  hideAsk();
+  const far = Math.abs(cur - fromIdx) > 2 && !reduceMotion();
+  if (far) {
+    riffle(fromIdx, cur, () => {
+      D.slides.forEach((s, k) => s.node.classList.toggle("active", k === cur));
+      const n = D.slides[cur].node;
+      n.classList.add("settle"); setTimeout(() => n.classList.remove("settle"), 400);
+    });
+  } else {
+    roll(fromIdx, cur, dir !== undefined ? dir : Math.sign(cur - fromIdx));
+  }
   const n = D.slides[cur].node;
   n.dataset.step = step === "last" ? n.dataset.frags : 0;
   applySteps(n);
@@ -378,19 +416,34 @@ function renderPane() {
     || '<span class="dim">no tags · /tag name</span>';
   const log = $("#log");
   log.innerHTML = "";
-  notesOf(cur).forEach(n => addMsg(n.kind, n.html || esc(n.text), false));
+  const prepared = (meta(cur).notes || []).length;
+  notesOf(cur).forEach((n, i) => {
+    const d = addMsg(n.kind, n.html || esc(n.text), false);
+    // anything you added live can be taken back; the deck's own notes cannot
+    if (i >= prepared) d.dataset.own = i - prepared;
+  });
   log.scrollTop = log.scrollHeight;
   renderNoteBadge();
+}
+/* Remove one of your own notes from this slide. */
+function deleteNote(k) {
+  const arr = store.data.notes[cur];
+  if (!arr || !arr[k]) return;
+  arr.splice(k, 1);
+  if (!arr.length) delete store.data.notes[cur];
+  save(); renderPane(); toast("Note deleted");
 }
 function addMsg(kind, html, persist = true) {
   const log = $("#log");
   const d = document.createElement("div");
   d.className = "msg " + kind;
   const label = { prep: "Prepared", live: "Note", q: "You → Claude", ai: "Claude", data: "Data" }[kind] || kind;
-  d.innerHTML = `<div class="tag-l">${label}</div>${html}`;
+  d.innerHTML = `<div class="tag-l">${label}</div><button class="del" title="Delete">&times;</button>${html}`;
   log.appendChild(d); log.scrollTop = log.scrollHeight;
   if (persist) {
-    (store.data.notes[cur] = store.data.notes[cur] || []).push({ kind, html });
+    const arr = (store.data.notes[cur] = store.data.notes[cur] || []);
+    arr.push({ kind, html });
+    d.dataset.own = arr.length - 1;          // deletable straight away, not only after a re-render
     save(); renderNoteBadge();
     if (kind === "live") flyNote(stripTags(html));
   }
@@ -495,7 +548,29 @@ function openFigure(f) {
     + ` · click to zoom · ←/→ for the next one</span>`;
   const lb = $("#lightbox"); lb.classList.remove("zoom"); lb.classList.add("open");
 }
-const closeLightbox = () => $("#lightbox").classList.remove("open", "zoom");
+/* Show another slide over this one without leaving it — for a deck link that
+   should feel like opening an exhibit rather than jumping away. */
+function peekSlide(n) {
+  const s = D.slides[n]; if (!s) return toast("No such slide");
+  const holder = $("#lbNode");
+  holder.innerHTML = "";
+  const clone = s.node.cloneNode(true);
+  clone.classList.add("peek");
+  clone.classList.remove("active", "leaveUp", "leaveDown", "enterUp", "enterDown");
+  clone.dataset.step = clone.dataset.frags || 0;      // fully revealed
+  clone.querySelectorAll("[data-in]").forEach(el => el.classList.add("on"));
+  clone.querySelectorAll("[data-goto],[data-peek],.askbtn,#noteBadge").forEach(el => el.remove());
+  holder.appendChild(clone);
+  $("#lbCap").innerHTML = `<b>Slide ${n + 1}.</b> ${esc(meta(n).title)}`
+    + `<span class="dim"> · Esc to close · /go ${n + 1} to stay there</span>`;
+  const lb = $("#lightbox");
+  lb.classList.remove("zoom"); lb.classList.add("open", "node");
+  lbIdx = -1;
+}
+const closeLightbox = () => {
+  $("#lightbox").classList.remove("open", "zoom", "node");
+  $("#lbNode").innerHTML = "";
+};
 function stepFigure(d) {
   if (lbIdx < 0 || !D.figures.length) return;
   openFigure(D.figures[(lbIdx + d + D.figures.length) % D.figures.length]);
@@ -755,8 +830,9 @@ function suggest(text) {
   }
   return COMMANDS.filter(c => c.name.startsWith(name)).map(c => ({
     label: `/${c.name} ${c.args}`, sub: c.help,
-    // an argument in [brackets] is optional, so Enter can just run the command
-    run: () => { if (c.args && !c.args.startsWith("[")) openPalette("/" + c.name + " ");
+    // a command that takes anything reopens the box ready for it; only a command
+    // with no argument at all runs on the first Enter
+    run: () => { if (c.args) openPalette("/" + c.name + " ");
                  else { closePalette(); c.run(""); } } }));
 }
 function renderPal() {
@@ -805,11 +881,26 @@ async function boot() {
 /* ------------------------------------------------------------------ wiring */
 document.addEventListener("DOMContentLoaded", () => {
   $("#prev").onclick = prev; $("#next").onclick = next;
-  $("#openPal").onclick = () => openPalette("");
   $("#hidePane").onclick = () => togglePane();
   $("#editBtn").onclick = () => setEdit(!editMode);
   $("#timer").onclick = () => Timer.toggle();
   $("#noteBadge").onclick = () => { if (paneHidden) togglePane(false); };
+  $("#log").addEventListener("click", e => {
+    const b = e.target.closest(".del"); if (!b) return;
+    const msg = b.closest(".msg");
+    if (msg && msg.dataset.own !== undefined) deleteNote(+msg.dataset.own);
+    else toast("That note came with the deck");
+  });
+  /* a deck can link one slide to another (Beamer's buttons become these);
+     B brings you back, as with any jump */
+  $("#deck").addEventListener("click", e => {
+    const a = e.target.closest("[data-goto],[data-peek]");
+    if (!a || !D) return;
+    e.preventDefault();
+    const n = +(a.dataset.peek || a.dataset.goto);
+    if (!(n >= 1 && n <= D.slides.length)) return;
+    a.dataset.peek ? peekSlide(n - 1) : show(n - 1);
+  });
   $("#ansClose").onclick = closeAnswer;
   const ansIn = $("#ansInput");
   const sendFollowUp = () => {
@@ -872,6 +963,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // selection -> ask Claude
   const askbtn = $("#askbtn"); let selText = "";
+  hideAsk = () => { askbtn.style.display = "none"; try { window.getSelection().removeAllRanges(); } catch (e) {} };
   document.addEventListener("selectionchange", () => {
     const sel = window.getSelection(), t = sel.toString().trim();
     const stage = $("#deck");
@@ -912,7 +1004,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (k === "l") { e.preventDefault(); return slideList(); }   // else the "l" lands in the box
     if (k === "h") return togglePane();
     if (k === "e") return setEdit(!editMode);
-    if (k === "b") return back();
+    // whole slides, ignoring the reveals inside them (→ and ← still step through those)
+    if (k === "n") { e.preventDefault(); return show(Math.min(cur + 1, D.slides.length - 1), { push: false, dir: 1 }); }
+    if (k === "b") { e.preventDefault(); return show(Math.max(cur - 1, 0), { push: false, step: "last", dir: -1 }); }
     if (k === "f") return toggleFull();
     if (k === "t") return Timer.toggle();
     if (k === "o") return $("#file").click();
@@ -923,6 +1017,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   window.addEventListener("resize", () => { if (D) renderNoteBadge(); });
+  // a scroll on the slide moves a slide: down is forward. One move per gesture,
+  // so a trackpad's inertia does not carry you through the deck.
+  let wheelAt = 0, wheelAcc = 0;
+  $("#deck").addEventListener("wheel", e => {
+    if (!D || $("#lightbox").classList.contains("open") || $("#palette").classList.contains("open")) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - wheelAt < 650) return;
+    wheelAcc += e.deltaY;
+    if (Math.abs(wheelAcc) < 40) return;
+    wheelAt = now;
+    const fwd = wheelAcc > 0; wheelAcc = 0;
+    if (fwd) { if (cur < D.slides.length - 1) show(cur + 1, { push: false, dir: 1 }); }
+    else if (cur > 0) show(cur - 1, { push: false, step: "last", dir: -1 });
+  }, { passive: false });
   // don't charge a slide for time when the deck isn't on screen
   document.addEventListener("visibilitychange", () =>
     document.hidden ? SlideClock.pause() : SlideClock.resume());

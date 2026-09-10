@@ -32,12 +32,23 @@ body.no-deck .deck{display:none}
 .stack>*{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 [data-in]{opacity:0;transition:opacity .35s}
 [data-in].on{opacity:1}
-.f1,.f2,.f3,.f4,.f5,.f6,.f7,.f8,.f9{transition:opacity .25s}
-.slide[data-step="0"] .f1,.slide[data-step="0"] .f2,.slide[data-step="1"] .f2,
-.slide[data-step="0"] .f3,.slide[data-step="1"] .f3,.slide[data-step="2"] .f3,
-.slide[data-step="0"] .f4,.slide[data-step="1"] .f4,.slide[data-step="2"] .f4,.slide[data-step="3"] .f4,
-.slide[data-step="0"] .f5,.slide[data-step="1"] .f5,.slide[data-step="2"] .f5,
-.slide[data-step="3"] .f5,.slide[data-step="4"] .f5{opacity:.18}
+/* A reveal is not there until it is: hidden outright, then it rises into place. */
+.f1,.f2,.f3,.f4,.f5,.f6,.f7,.f8,.f9{opacity:0;visibility:hidden;
+  transform:translateY(calc(2.6*var(--pt)));
+  transition:opacity .3s ease-out,transform .34s cubic-bezier(.2,.75,.3,1),visibility 0s .34s}
+.slide[data-step="1"] :is(.f1),
+.slide[data-step="2"] :is(.f1,.f2),
+.slide[data-step="3"] :is(.f1,.f2,.f3),
+.slide[data-step="4"] :is(.f1,.f2,.f3,.f4),
+.slide[data-step="5"] :is(.f1,.f2,.f3,.f4,.f5),
+.slide[data-step="6"] :is(.f1,.f2,.f3,.f4,.f5,.f6),
+.slide[data-step="7"] :is(.f1,.f2,.f3,.f4,.f5,.f6,.f7),
+.slide[data-step="8"] :is(.f1,.f2,.f3,.f4,.f5,.f6,.f7,.f8),
+.slide[data-step="9"] :is(.f1,.f2,.f3,.f4,.f5,.f6,.f7,.f8,.f9)
+  {opacity:1;visibility:visible;transform:none;transition-delay:0s}
+@media (prefers-reduced-motion:reduce){
+  .f1,.f2,.f3,.f4,.f5,.f6,.f7,.f8,.f9{transform:none;transition:opacity .2s}
+}
 
 [contenteditable="true"]:focus{outline:1px dashed rgba(25,25,110,.45);outline-offset:3px}
 ::selection{background:#ffe58a}
@@ -109,6 +120,12 @@ body.editing [contenteditable="true"]:hover{background:rgba(201,162,39,.08)}
 
 #counter{white-space:nowrap;font-variant-numeric:tabular-nums}
 
+.riffling .slide{transition:none!important}
+.slide.flick{animation:flick .11s ease-out both}
+@keyframes flick{from{opacity:.35;transform:scale(.985)}to{opacity:1;transform:none}}
+.slide.settle{animation:settle .32s cubic-bezier(.2,.7,.3,1) both}
+@keyframes settle{from{opacity:0;transform:scale(.99)}to{opacity:1;transform:none}}
+
 /* stopwatch for the slide you are on */
 #slideTime{font-variant-numeric:tabular-nums;font-size:12px;color:#8a8a83;min-width:44px;
   letter-spacing:.2px;user-select:none}
@@ -162,7 +179,14 @@ table.times td.b i{display:block;height:5px;border-radius:3px;background:#c8d2e8
 .msg.q{border-left-color:var(--navy)}
 .msg.ai{border-left-color:#008080}
 .msg.data{border-left-color:#3b7dd8}
+.msg{position:relative}
 .msg .tag-l{font-size:10.5px;color:#888;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.msg .del{position:absolute;top:3px;right:4px;border:0;background:none;cursor:pointer;
+  font-size:16px;line-height:1;padding:2px 5px;border-radius:5px;color:#b4b4ac;
+  opacity:0;transition:opacity .12s,background .12s,color .12s}
+.msg:hover .del{opacity:1}
+.msg .del:hover{background:rgba(164,38,44,.1);color:#a4262c}
+.msg[data-own] .del{color:#9a9a92}
 .msg a{color:var(--navy)} .msg pre{white-space:pre-wrap;font-size:12px;margin:0}
 .up{color:#0a7d32} .down{color:#a4262c}
 .inp{border-top:1px solid var(--line);padding:10px 12px;display:flex;gap:8px}
@@ -189,10 +213,19 @@ table.times td.b i{display:block;height:5px;border-radius:3px;background:#c8d2e8
 #lightbox{position:fixed;inset:0;background:rgba(8,8,16,.78);display:none;align-items:center;
   justify-content:center;z-index:40;padding:2vh 2vw}
 #lightbox.open{display:flex}
-.lb-box{background:#fff;border-radius:10px;padding:14px 16px 10px;width:min(84vw,1250px);
-  height:82vh;display:flex;flex-direction:column;gap:8px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
-.lb-fig{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:auto}
-#lbImg{max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:zoom-in}
+/* Sized to the exhibit, not to the window: the box shrinks to whatever the
+   figure needs, so a narrow table is not stranded in a wall of white. */
+.lb-box{background:#fff;border-radius:10px;padding:12px 14px 8px;
+  max-width:min(72vw,1040px);max-height:78vh;
+  display:flex;flex-direction:column;gap:6px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+.lb-fig{flex:0 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;
+  overflow:auto}
+#lbImg{max-width:100%;max-height:74vh;object-fit:contain;display:block;cursor:zoom-in}
+#lightbox.node #lbImg{display:none}
+#lbNode{display:none}
+#lightbox.node #lbNode{display:block;width:min(70vw,1000px);aspect-ratio:var(--slide-w)/var(--slide-h);
+  container-type:inline-size;position:relative;background:#fff;overflow:hidden}
+#lbNode .slide.peek{display:block;position:absolute;inset:0;opacity:1;transform:none}
 #lightbox.zoom .lb-fig{align-items:flex-start;justify-content:flex-start}
 #lightbox.zoom #lbImg{max-width:none;max-height:none;transform:scale(1.9);
   transform-origin:top left;cursor:zoom-out}
