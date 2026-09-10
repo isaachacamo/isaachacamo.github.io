@@ -574,6 +574,15 @@ function peekSlide(n, opts = {}) {
     clone.querySelectorAll("[data-in]").forEach(el => el.classList.add("on"));
   }
   clone.querySelectorAll("[data-goto],[data-peek],.askbtn,#noteBadge").forEach(el => el.remove());
+  // a slide can ask the popup to zoom to one region of it ("x y w h", fractions)
+  const crop = (s.node.dataset.peekCrop || "").split(/\s+/).map(Number);
+  holder.style.aspectRatio = "";
+  if (crop.length === 4 && crop.every(v => isFinite(v)) && crop[2] > 0 && crop[3] > 0) {
+    const [x, y, w, h] = crop;
+    holder.style.aspectRatio = `${D.size[0] * w} / ${D.size[1] * h}`;
+    clone.style.cssText += `;left:${-x / w * 100}%;top:${-y / h * 100}%;width:${100 / w}%;height:${100 / h}%;`
+      + `--pt:calc(100cqw / ${D.size[0] * w})`;
+  }
   holder.appendChild(clone);
   $("#lbCap").innerHTML = `<b>Slide ${n + 1}.</b> ${esc(meta(n).title)}`
     + `<span class="dim"> · Esc to close · /go ${n + 1} to stay there</span>`;
@@ -1013,7 +1022,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const peek = $("#lbNode .slide");
       const stepPeek = d => {                            // a popped-up slide steps like the real one
         const st = +peek.dataset.step, max = +peek.dataset.frags || 0, to = st + d;
-        if (to < 0 || to > max) return;
+        if (to > max) return closeLightbox();              // played through: back to the slide
+        if (to < 0) return;
         peek.dataset.step = to; applySteps(peek);
       };
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); peek ? stepPeek(1) : stepFigure(1); }

@@ -223,7 +223,8 @@ table.times td.b i{display:block;height:5px;border-radius:3px;background:#c8d2e8
 #lbImg{max-width:100%;max-height:74vh;object-fit:contain;display:block;cursor:zoom-in}
 #lightbox.node #lbImg{display:none}
 #lbNode{display:none}
-#lightbox.node #lbNode{display:block;width:min(70vw,1000px);aspect-ratio:var(--slide-w)/var(--slide-h);
+#lightbox.node .lb-box{max-width:min(90vw,1500px)}
+#lightbox.node #lbNode{display:block;width:min(84vw,1400px);aspect-ratio:var(--slide-w)/var(--slide-h);
   container-type:inline-size;position:relative;background:#fff;overflow:hidden}
 #lbNode .slide.peek{display:block;position:absolute;inset:0;opacity:1;transform:none}
 #lightbox.zoom .lb-fig{align-items:flex-start;justify-content:flex-start}
