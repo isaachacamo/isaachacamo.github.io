@@ -213,6 +213,10 @@ table.times td.b i{display:block;height:5px;border-radius:3px;background:#c8d2e8
 #lightbox{position:fixed;inset:0;background:rgba(8,8,16,.78);display:none;align-items:center;
   justify-content:center;z-index:40;padding:2vh 2vw}
 #lightbox.open{display:flex}
+/* the clicker's blank button (".") blacks the screen out between questions */
+#deck.blank{background:#000}
+#deck.blank .slide,#deck.blank .stage{visibility:hidden}
+#lightbox.closing{background:rgba(8,8,16,0);transition:background .46s;pointer-events:none}
 /* Sized to the exhibit, not to the window: the box shrinks to whatever the
    figure needs, so a narrow table is not stranded in a wall of white. */
 .lb-box{background:#fff;border-radius:10px;padding:12px 14px 8px;

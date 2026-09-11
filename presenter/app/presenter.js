@@ -588,8 +588,11 @@ function peekSlide(n, opts = {}) {
   $("#lbCap").innerHTML = `<b>Slide ${n + 1}.</b> ${esc(meta(n).title)}`
     + `<span class="dim"> · Esc to close · /go ${n + 1} to stay there</span>`;
   const lb = $("#lightbox");
-  lb.classList.remove("zoom"); lb.classList.add("open", "node");
+  lb.classList.remove("zoom", "closing"); lb.classList.add("open", "node");
   lbIdx = -1;
+  if (lbClosing) { const a = lbClosing; lbClosing = null; a.cancel(); }
+  // where the popup returns to when it closes (an element's current rect, or the rect it grew from)
+  lbBack = opts.back || (opts.from ? () => opts.from : null);
   if (opts.from && !reduceMotion()) {
     // grow out of the element that asked for it, so the popup reads as a zoom
     const box = $("#lightbox .lb-box"), f = opts.from;
@@ -620,9 +623,30 @@ function cycleLink() {
     toast(`Link ${linkIdx + 1} of ${links.length} · K for the next`);
   } else show(n - 1);
 }
+let lbBack = null, lbClosing = null;
 const closeLightbox = () => {
-  $("#lightbox").classList.remove("open", "zoom", "node");
-  $("#lbNode").innerHTML = "";
+  const lb = $("#lightbox"), box = $("#lightbox .lb-box");
+  const finish = () => {
+    if (lbClosing) { const a = lbClosing; lbClosing = null; a.cancel(); }
+    lb.classList.remove("open", "zoom", "node", "closing");
+    $("#lbNode").innerHTML = "";
+  };
+  if (lbClosing) return finish();
+  let back = null;
+  try { back = lbBack && lb.classList.contains("open") && lb.classList.contains("node") ? lbBack() : null; } catch (e) {}
+  lbBack = null;
+  if (!back || !back.width || reduceMotion()) return finish();
+  // the genie: the popup slips back into the header it came out of
+  const b = box.getBoundingClientRect();
+  const dx = (back.left + back.width / 2) - (b.left + b.width / 2);
+  const dy = (back.top + back.height / 2) - (b.top + b.height / 2);
+  lb.classList.add("closing");
+  lbClosing = box.animate(
+    [{ transform: "none", opacity: 1, offset: 0 },
+     { transform: `translate(${dx * .45}px,${dy * .45}px) scale(${.55 + .45 * back.width / b.width},${.7 + .3 * back.height / b.height})`, opacity: .8, offset: .45 },
+     { transform: `translate(${dx}px,${dy}px) scale(${back.width / b.width},${back.height / b.height})`, opacity: .15, offset: 1 }],
+    { duration: 460, easing: "cubic-bezier(.4,0,.6,1)", fill: "forwards" });
+  lbClosing.onfinish = finish;
 };
 function stepFigure(d) {
   if (lbIdx < 0 || !D.figures.length) return;
@@ -1059,8 +1083,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (to < 0) return;
         peek.dataset.step = to; applySteps(peek);
       };
-      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); peek ? stepPeek(1) : stepFigure(1); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); peek ? stepPeek(-1) : stepFigure(-1); }
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+        e.preventDefault(); peek ? stepPeek(1) : stepFigure(1); }
+      if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault(); peek ? stepPeek(-1) : stepFigure(-1); }
       if (e.key.toLowerCase() === "z") $("#lightbox").classList.toggle("zoom");
       if (e.key.toLowerCase() === "k") { e.preventDefault(); cycleLink(); }
       return;
@@ -1076,8 +1102,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (k === "f") return toggleFull();
     if (k === "t") return Timer.toggle();
     if (k === "o") return $("#file").click();
-    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); next(); }
-    if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); prev(); }
+    if (e.key === "." || e.key === "F5") { e.preventDefault(); return $("#deck").classList.toggle("blank"); }
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+      e.preventDefault(); $("#deck").classList.remove("blank"); return next(); }
+    if (e.key === "ArrowLeft" || e.key === "PageUp") {
+      e.preventDefault(); $("#deck").classList.remove("blank"); return prev(); }
     if (e.key === "Home") show(0);
     if (e.key === "End") show(D.slides.length - 1);
   });
